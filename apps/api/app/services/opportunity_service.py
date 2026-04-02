@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -10,6 +11,23 @@ from app.db.models import RegionMarketSnapshot
 from app.services.esi_universe import get_type_volume_m3
 from app.services.location_name_service import resolve_location_names
 from app.services.logistics_service import analyze_route, route_passes_security_filters
+
+
+def _rounded(value: float | int | None, digits: int = 2) -> float | None:
+    if value is None:
+        return None
+    q = Decimal(1).scaleb(-digits)
+    return float(Decimal(str(value)).quantize(q, rounding=ROUND_HALF_UP))
+
+
+def _rounded_m3(value: float | int | None) -> float | None:
+    if value is None:
+        return None
+    rounded = _rounded(value, 3)
+    if rounded is None:
+        return None
+    # collapse 2.000 -> 2.0 naturally on JSON serialization without float garbage
+    return rounded
 
 async def compute_opportunities(
     db: Session,
@@ -134,10 +152,7 @@ async def compute_opportunities(
 
         volume_m3, item_name = await get_type_volume_m3(db, type_id, settings.esi_user_agent)
         total_m3_necessary = volume_m3 * qmax
-        fits_cargo = (
-            total_m3_available_value > 0
-            and total_m3_necessary <= total_m3_available_value
-        )
+        fits_cargo = total_m3_available_value > 0 and total_m3_necessary <= total_m3_available_value
 
         if max_total_m3_value > 0 and total_m3_necessary > max_total_m3_value:
             continue
@@ -168,18 +183,20 @@ async def compute_opportunities(
             "item_name": item_name,
             "src_region_id": src_region_id,
             "dst_region_id": dst_region_id,
-            "src_best_sell": src.best_sell,
-            "dst_best_buy": dst.best_buy,
+            "src_best_sell": _rounded(src.best_sell, 2),
+            "dst_best_buy": _rounded(dst.best_buy, 2),
+            "buy_price": _rounded(src.best_sell, 2),
+            "sell_price": _rounded(dst.best_buy, 2),
             "buy_location_id": buy_location_id,
             "buy_location_name": buy_location_name,
             "sell_location_id": sell_location_id,
             "sell_location_name": sell_location_name,
-            "taxes_unit": taxes_unit,
-            "broker_fees_unit": broker_fees_unit,
-            "total_fees_unit": total_fees_unit,
-            "hauling_cost_unit": hauling_cost_unit,
-            "profit_per_unit": profit_per_unit,
-            "roi": roi,
+            "taxes_unit": _rounded(taxes_unit, 2),
+            "broker_fees_unit": _rounded(broker_fees_unit, 2),
+            "total_fees_unit": _rounded(total_fees_unit, 2),
+            "hauling_cost_unit": _rounded(hauling_cost_unit, 2),
+            "profit_per_unit": _rounded(profit_per_unit, 2),
+            "roi": _rounded(roi, 6),
             "max_qty_est": qmax,
             "route_jumps": route_info["route_jumps"],
             "route_system_ids": route_info["route_system_ids"],
@@ -187,14 +204,14 @@ async def compute_opportunities(
             "route_security_profile": route_info["security_profile"],
             "min_security_on_path": route_info["min_security_on_path"],
             "max_security_on_path": route_info["max_security_on_path"],
-            "volume_m3": volume_m3,
-            "total_m3": total_m3_necessary,
-            "total_m3_necessary": total_m3_necessary,
-            "total_m3_available": total_m3_available_value,
+            "volume_m3": _rounded_m3(volume_m3),
+            "total_m3": _rounded_m3(total_m3_necessary),
+            "total_m3_necessary": _rounded_m3(total_m3_necessary),
+            "total_m3_available": _rounded_m3(total_m3_available_value),
             "fits_cargo": fits_cargo,
-            "net_profit_isk": net_profit_isk,
-            "profit_per_m3": profit_per_m3,
-            "isk_per_jump": isk_per_jump,
+            "net_profit_isk": _rounded(net_profit_isk, 2),
+            "profit_per_m3": _rounded(profit_per_m3, 2),
+            "isk_per_jump": _rounded(isk_per_jump, 2),
         })
 
     results.sort(key=lambda row: row["net_profit_isk"], reverse=True)

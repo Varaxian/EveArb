@@ -45,8 +45,15 @@ def get_platform_region_hub_systems(db: Session) -> dict[int, int]:
     row = _get_app_setting(db, "region_hub_systems")
     if row and row.value:
         raw = json.loads(row.value)
-        return {int(k): int(v) for k, v in raw.items()}
-    return settings.region_hub_systems()
+        mapping = {int(k): int(v) for k, v in raw.items()}
+    else:
+        mapping = settings.region_hub_systems()
+
+    # Correct an old bad default that pointed Metropolis at Perimeter instead of Hek.
+    if mapping.get(10000042) == 30000144:
+        mapping[10000042] = 30002053
+        _set_app_setting(db, "region_hub_systems", json.dumps({str(k): v for k, v in mapping.items()}))
+    return mapping
 
 def set_platform_region_hub_systems(db: Session, mapping: dict[int, int]) -> dict[int, int]:
     clean = {int(k): int(v) for k, v in mapping.items()}

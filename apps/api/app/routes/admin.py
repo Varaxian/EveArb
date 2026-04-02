@@ -1,13 +1,14 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import AdminAuditLog, User, UserRole, UserSession
 from app.services.auth_service import get_user_role, log_admin_action, require_admin, require_super_admin
-from app.utils.json_utils import safe_json_loads
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -22,7 +23,7 @@ def audit_logs(current_user: User = Depends(require_admin), db: Session = Depend
             "action": row.action,
             "target_type": row.target_type,
             "target_id": row.target_id,
-            "details": safe_json_loads(row.details_json),
+            "details": json.loads(row.details_json) if row.details_json else None,
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }
         for row in rows
