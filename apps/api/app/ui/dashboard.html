@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>EVE Arb</title>
+  <title>EVE Arb Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #111827; color: #e5e7eb; }
@@ -40,18 +40,18 @@
       <button onclick="refreshToken()">Refresh token</button>
       <div id="meResult" class="mono"></div>
     </div>
-    <div class="card admin-only admin-settings-only" style="display:none;">
+    <div class="card admin-only" style="display:none;">
       <h3>Manual ingest</h3>
       <button onclick="runIngest()">Run ingest now</button>
       <div id="ingestResult" class="mono"></div>
     </div>
-    <div class="card admin-only admin-settings-only" style="display:none;">
+    <div class="card admin-only" style="display:none;">
       <h3>Scheduler</h3>
       <button onclick="loadScheduler()">Refresh scheduler status</button>
       <button onclick="runScheduler()">Run scheduler cycle now</button>
       <div id="schedulerResult" class="mono"></div>
     </div>
-    <div class="card admin-only admin-settings-only" style="display:none;">
+    <div class="card admin-only" style="display:none;">
       <h3>Auth sessions</h3>
       <button onclick="loadSessions()">Refresh sessions</button>
       <div id="sessionsResult" class="mono"></div>
@@ -59,14 +59,14 @@
   </div>
 
   <div class="row">
-    <div class="card admin-only admin-settings-only" style="display:none;">
+    <div class="card admin-only" style="display:none;">
       <h3>Platform tracked regions</h3>
       <label>Comma-separated region IDs</label>
       <input id="trackedRegions" value="10000002,10000043">
       <button onclick="saveTrackedRegions()">Save tracked regions</button>
       <div id="trackedRegionsResult" class="mono"></div>
     </div>
-    <div class="card admin-only admin-settings-only" style="display:none;">
+    <div class="card admin-only" style="display:none;">
       <h3>Platform hub systems</h3>
       <label>JSON mapping of region → hub system</label>
       <textarea id="hubSystems" rows="6">{}</textarea>
@@ -76,7 +76,7 @@
   </div>
 
   <div class="row">
-    <div class="card user-dashboard-only">
+    <div class="card">
       <h3>Your dashboard filters</h3>
       <div class="inline">
         <div><label>Source region ID</label><input id="srcRegion" value="10000002"></div>
@@ -106,7 +106,7 @@
     </div>
   </div>
 
-  <div class="card user-dashboard-only">
+  <div class="card">
     <h3>Route Analysis</h3>
     <div class="inline">
       <div><label>From system</label><input id="routeFromSystem" value="30000142"></div>
@@ -116,7 +116,7 @@
     <div id="routeResult" class="mono"></div>
   </div>
 
-  <div class="card user-dashboard-only">
+  <div class="card">
     <h3>Opportunities</h3>
     <div id="opportunitiesMeta" class="mono"></div>
     <table id="oppTable">
@@ -171,25 +171,6 @@
   </div>
 
 <script>
-const pagePath = window.location.pathname;
-const isAdministratorSettingsPage = pagePath === "/administrator-settings" || pagePath === "/admin";
-const isActiveOpportunitiesPage = pagePath === "/active-opportunities";
-
-function applyPageMode() {
-  const title = document.querySelector("h1");
-  if (isAdministratorSettingsPage) {
-    title.textContent = "Administrator Settings";
-    document.querySelectorAll(".admin-settings-only").forEach(el => { el.style.display = "none"; });
-    document.querySelectorAll(".user-dashboard-only").forEach(el => { el.style.display = "none"; });
-  } else if (isActiveOpportunitiesPage) {
-    title.textContent = "Active Opportunities";
-    document.querySelectorAll(".admin-settings-only").forEach(el => { el.style.display = "none"; });
-  } else {
-    title.textContent = "Dashboard";
-    document.querySelectorAll(".admin-settings-only").forEach(el => { el.style.display = "none"; });
-  }
-}
-
 function currentFilters() {
   const totalM3Available = document.getElementById('totalM3Available').value;
   return {
@@ -234,9 +215,7 @@ async function loadMe() {
   status.textContent = `Authenticated as user #${data.user.id} (${role}) with ${data.characters.length} linked character(s).`;
   if (role === 'admin' || role === 'super_admin') {
     document.getElementById('adminNav').style.display = 'inline-block';
-    if (isAdministratorSettingsPage) {
-      document.querySelectorAll('.admin-settings-only').forEach(el => el.style.display = '');
-    }
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
   el.textContent = JSON.stringify(data, null, 2);
 }

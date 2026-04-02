@@ -1,0 +1,7 @@
+v2.20.04
+- Moves admin UI entry to Administrator Settings
+- Keeps /admin as redirect for admins
+- Adds admin audit logging table and endpoint
+- Logs admin role changes and manual ingest actions
+- Preserves existing psycopg DB URL normalization
+- Startup schema patch still self-heals auth/admin tables

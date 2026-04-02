@@ -163,6 +163,18 @@ class RegionMarketSnapshot(Base):
     best_buy_location_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 
 
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(100), index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class JobRun(Base):
     __tablename__ = "job_runs"
 

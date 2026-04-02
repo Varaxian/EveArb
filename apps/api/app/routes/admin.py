@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.db.models import JobRun, User, UserRole, UserSession
+from app.db.models import AdminAuditLog, JobRun, User, UserRole, UserSession
+from app.services.audit_service import log_admin_action
 from app.services.auth_service import get_current_user_role, require_admin, require_super_admin
 from app.services.job_service import finish_job, latest_job_by_status, start_job
 from app.services.market_service import ingest_regions
@@ -68,6 +69,7 @@ def admin_set_role(user_id: int, payload: RoleUpdatePayload, current_user: User 
         row.role = role
     db.commit()
     db.refresh(row)
+    log_admin_action(db, actor_user_id=current_user.id, action="set_user_role", target_type="user", target_id=str(user_id), details={"role": row.role})
     return {"user_id": user_id, "role": row.role}
 
 @router.get("/sessions")
@@ -102,6 +104,23 @@ def admin_scheduler_status(current_user: User = Depends(require_admin), db: Sess
 async def admin_scheduler_run(current_user: User = Depends(require_admin)):
     return await run_ingest_cycle()
 
+
+@router.get("/audit-logs")
+def admin_audit_logs(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.query(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(200).all()
+    return [
+        {
+            "id": r.id,
+            "actor_user_id": r.actor_user_id,
+            "action": r.action,
+            "target_type": r.target_type,
+            "target_id": r.target_id,
+            "details": json.loads(r.details_json) if r.details_json else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
 @router.post("/ingest/run")
 async def admin_ingest_run(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     target_regions = get_platform_tracked_regions(db)
@@ -111,7 +130,9 @@ async def admin_ingest_run(current_user: User = Depends(require_admin), db: Sess
     try:
         result = await ingest_regions(db, target_regions)
         finish_job(db, job.id, "success", result)
+        log_admin_action(db, actor_user_id=current_user.id, action="manual_ingest_run", target_type="job", target_id=str(job.id), details=result)
         return result
     except Exception as exc:
         finish_job(db, job.id, "failed", {"error": repr(exc)})
+        log_admin_action(db, actor_user_id=current_user.id, action="manual_ingest_failed", target_type="job", target_id=str(job.id), details={"error": repr(exc)})
         raise
