@@ -1,9 +1,27 @@
+# EVE Arb v2.02
 
-EVE ARB v2.01 CLEAN BASELINE
+This build keeps the clean Railway-safe baseline and adds the first ESI auth layer.
 
-This is a clean, Railway-compatible rebuild of the project.
+## Included
+- Railway-safe Dockerfile using `${PORT:-8000}`
+- FastAPI app shell
+- `/auth/login`
+- `/auth/callback`
+- `/config-check`
+- `.env.example` with the Railway public callback URL pattern
 
-Key:
-- Entry point: app.main:app
-- App dir: apps/api
-- Dockerized for Railway
+## Railway env vars to set
+- `ESI_CLIENT_ID`
+- `ESI_CLIENT_SECRET`
+- `ESI_CALLBACK_URL=https://evearb-production.up.railway.app/auth/callback`
+- `PUBLIC_BASE_URL=https://evearb-production.up.railway.app`
+
+## Test after deploy
+- `/`
+- `/health`
+- `/config-check`
+- `/auth/login`
+
+## Notes
+This version does not persist tokens yet. It is the auth scaffold so login can complete cleanly before we add
+market pull, storage, opportunities, CSV, and logistics.

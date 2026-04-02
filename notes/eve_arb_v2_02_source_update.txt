@@ -1,0 +1,25 @@
+EVE ARB SOURCE UPDATE – v2.02
+
+STATUS:
+- v2.01 clean Railway baseline is live
+- v2.02 adds first-pass ESI auth scaffold
+
+INCLUDED IN v2.02:
+- /auth/login redirect to EVE SSO
+- /auth/callback code exchange + verify
+- /config-check for environment validation
+- dynamic PORT-safe Dockerfile
+
+NOT YET INCLUDED:
+- token persistence
+- refresh token storage
+- ESI market ingestion
+- opportunities engine
+- CSV export
+- logistics layer
+
+NEXT STEP:
+Build v2.03 on top of this with:
+1. token persistence
+2. region/settings storage
+3. first market data ingest
