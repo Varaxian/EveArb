@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.models import UserOpportunity
+from app.db.models import CompletedOpportunity, FailedOpportunity, UserOpportunity
 
 VALID_FAIL_REASONS = {
     "price_changed",
@@ -21,8 +21,10 @@ VALID_FAIL_REASONS = {
     "other",
 }
 
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
 
 def save_opportunity(db: Session, *, user_id: int, payload: dict[str, Any]) -> UserOpportunity:
     opp = UserOpportunity(
@@ -42,7 +44,10 @@ def save_opportunity(db: Session, *, user_id: int, payload: dict[str, Any]) -> U
         roi=float(payload.get("roi") or 0.0),
         quantity=int(payload.get("max_qty_est") or payload.get("quantity") or 0),
         volume_m3=(float(payload["volume_m3"]) if payload.get("volume_m3") is not None else None),
-        total_m3=(float(payload["total_m3_necessary"]) if payload.get("total_m3_necessary") is not None else (float(payload["total_m3"]) if payload.get("total_m3") is not None else None)),
+        total_m3=(
+            float(payload["total_m3_necessary"]) if payload.get("total_m3_necessary") is not None
+            else (float(payload["total_m3"]) if payload.get("total_m3") is not None else None)
+        ),
         route_jumps=(int(payload["route_jumps"]) if payload.get("route_jumps") is not None else None),
         route_security_profile=payload.get("route_security_profile"),
         status="active",
@@ -52,38 +57,80 @@ def save_opportunity(db: Session, *, user_id: int, payload: dict[str, Any]) -> U
     db.refresh(opp)
     return opp
 
+
 def list_user_opportunities(db: Session, *, user_id: int) -> list[UserOpportunity]:
     return (
         db.query(UserOpportunity)
-        .filter(UserOpportunity.user_id == user_id)
-        .order_by(UserOpportunity.status.asc(), UserOpportunity.created_at.desc())
+        .filter(UserOpportunity.user_id == user_id, UserOpportunity.status == "active")
+        .order_by(UserOpportunity.created_at.desc())
         .all()
     )
 
-def complete_opportunity(db: Session, *, user_id: int, opportunity_id: int) -> UserOpportunity:
-    opp = db.query(UserOpportunity).filter(UserOpportunity.id == opportunity_id, UserOpportunity.user_id == user_id).first()
-    if opp is None:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    opp.status = "completed"
-    opp.fail_reason = None
-    opp.completed_at = utcnow()
-    db.commit()
-    db.refresh(opp)
-    return opp
 
-def fail_opportunity(db: Session, *, user_id: int, opportunity_id: int, fail_reason: str) -> UserOpportunity:
-    opp = db.query(UserOpportunity).filter(UserOpportunity.id == opportunity_id, UserOpportunity.user_id == user_id).first()
+def _copy_common_fields(opp: UserOpportunity) -> dict[str, Any]:
+    return {
+        "user_id": opp.user_id,
+        "source_opportunity_id": opp.id,
+        "type_id": opp.type_id,
+        "item_name": opp.item_name,
+        "src_region_id": opp.src_region_id,
+        "dst_region_id": opp.dst_region_id,
+        "buy_price": opp.buy_price,
+        "sell_price": opp.sell_price,
+        "buy_location_id": opp.buy_location_id,
+        "buy_location_name": opp.buy_location_name,
+        "sell_location_id": opp.sell_location_id,
+        "sell_location_name": opp.sell_location_name,
+        "expected_profit_per_unit": opp.expected_profit_per_unit,
+        "expected_net_profit_isk": opp.expected_net_profit_isk,
+        "roi": opp.roi,
+        "quantity": opp.quantity,
+        "volume_m3": opp.volume_m3,
+        "total_m3": opp.total_m3,
+        "route_jumps": opp.route_jumps,
+        "route_security_profile": opp.route_security_profile,
+        "created_at": opp.created_at,
+        "updated_at": opp.updated_at,
+    }
+
+
+def complete_opportunity(db: Session, *, user_id: int, opportunity_id: int) -> CompletedOpportunity:
+    opp = db.query(UserOpportunity).filter(
+        UserOpportunity.id == opportunity_id,
+        UserOpportunity.user_id == user_id,
+        UserOpportunity.status == "active",
+    ).first()
     if opp is None:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    archived = CompletedOpportunity(**_copy_common_fields(opp), completed_at=utcnow())
+    db.add(archived)
+    db.delete(opp)
+    db.commit()
+    db.refresh(archived)
+    return archived
+
+
+def fail_opportunity(db: Session, *, user_id: int, opportunity_id: int, fail_reason: str) -> FailedOpportunity:
+    opp = db.query(UserOpportunity).filter(
+        UserOpportunity.id == opportunity_id,
+        UserOpportunity.user_id == user_id,
+        UserOpportunity.status == "active",
+    ).first()
+    if opp is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+
     fail_reason = (fail_reason or "other").strip().lower()
     if fail_reason not in VALID_FAIL_REASONS:
         raise HTTPException(status_code=400, detail="Invalid fail_reason")
-    opp.status = "failed"
-    opp.fail_reason = fail_reason
-    opp.failed_at = utcnow()
+
+    archived = FailedOpportunity(**_copy_common_fields(opp), fail_reason=fail_reason, failed_at=utcnow())
+    db.add(archived)
+    db.delete(opp)
     db.commit()
-    db.refresh(opp)
-    return opp
+    db.refresh(archived)
+    return archived
+
 
 def serialize_opportunity(opp: UserOpportunity) -> dict[str, Any]:
     return {
@@ -112,5 +159,66 @@ def serialize_opportunity(opp: UserOpportunity) -> dict[str, Any]:
         "created_at": opp.created_at.isoformat() if opp.created_at else None,
         "updated_at": opp.updated_at.isoformat() if opp.updated_at else None,
         "completed_at": opp.completed_at.isoformat() if opp.completed_at else None,
+        "failed_at": opp.failed_at.isoformat() if opp.failed_at else None,
+    }
+
+
+def serialize_completed_opportunity(opp: CompletedOpportunity) -> dict[str, Any]:
+    return {
+        "id": opp.id,
+        "source_opportunity_id": opp.source_opportunity_id,
+        "user_id": opp.user_id,
+        "type_id": opp.type_id,
+        "item_name": opp.item_name,
+        "src_region_id": opp.src_region_id,
+        "dst_region_id": opp.dst_region_id,
+        "buy_price": opp.buy_price,
+        "sell_price": opp.sell_price,
+        "buy_location_id": opp.buy_location_id,
+        "buy_location_name": opp.buy_location_name,
+        "sell_location_id": opp.sell_location_id,
+        "sell_location_name": opp.sell_location_name,
+        "expected_profit_per_unit": opp.expected_profit_per_unit,
+        "expected_net_profit_isk": opp.expected_net_profit_isk,
+        "roi": opp.roi,
+        "quantity": opp.quantity,
+        "volume_m3": opp.volume_m3,
+        "total_m3": opp.total_m3,
+        "route_jumps": opp.route_jumps,
+        "route_security_profile": opp.route_security_profile,
+        "status": "completed",
+        "created_at": opp.created_at.isoformat() if opp.created_at else None,
+        "updated_at": opp.updated_at.isoformat() if opp.updated_at else None,
+        "completed_at": opp.completed_at.isoformat() if opp.completed_at else None,
+    }
+
+
+def serialize_failed_opportunity(opp: FailedOpportunity) -> dict[str, Any]:
+    return {
+        "id": opp.id,
+        "source_opportunity_id": opp.source_opportunity_id,
+        "user_id": opp.user_id,
+        "type_id": opp.type_id,
+        "item_name": opp.item_name,
+        "src_region_id": opp.src_region_id,
+        "dst_region_id": opp.dst_region_id,
+        "buy_price": opp.buy_price,
+        "sell_price": opp.sell_price,
+        "buy_location_id": opp.buy_location_id,
+        "buy_location_name": opp.buy_location_name,
+        "sell_location_id": opp.sell_location_id,
+        "sell_location_name": opp.sell_location_name,
+        "expected_profit_per_unit": opp.expected_profit_per_unit,
+        "expected_net_profit_isk": opp.expected_net_profit_isk,
+        "roi": opp.roi,
+        "quantity": opp.quantity,
+        "volume_m3": opp.volume_m3,
+        "total_m3": opp.total_m3,
+        "route_jumps": opp.route_jumps,
+        "route_security_profile": opp.route_security_profile,
+        "status": "failed",
+        "fail_reason": opp.fail_reason,
+        "created_at": opp.created_at.isoformat() if opp.created_at else None,
+        "updated_at": opp.updated_at.isoformat() if opp.updated_at else None,
         "failed_at": opp.failed_at.isoformat() if opp.failed_at else None,
     }
