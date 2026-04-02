@@ -8,6 +8,7 @@ from app.db.database import get_db
 from app.services.export_service import opportunities_to_csv
 from app.services.opportunity_service import compute_opportunities
 from app.services.settings_service import get_platform_region_hub_systems
+from app.services.auth_service import get_current_user_optional
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -25,6 +26,7 @@ async def export_opportunities_csv(
     route_security_mode: str = Query(default="any"),
     min_system_security: float = Query(default=0.0),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
 ):
     hub_systems = get_platform_region_hub_systems(db)
     rows = await compute_opportunities(
@@ -41,6 +43,7 @@ async def export_opportunities_csv(
         max_jumps=max_jumps,
         route_security_mode=route_security_mode,
         min_system_security=min_system_security,
+        user_id=(current_user.id if current_user else None),
     )
     csv_text = opportunities_to_csv(rows)
     return Response(

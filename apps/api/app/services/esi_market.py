@@ -34,12 +34,15 @@ def aggregate_best_prices(orders: Iterable[dict]) -> dict[int, dict]:
         "best_buy": None,
         "sell_volume": 0,
         "buy_volume": 0,
+        "best_sell_location_id": None,
+        "best_buy_location_id": None,
     })
 
     for order in orders:
         type_id = int(order["type_id"])
         price = float(order["price"])
         volume = int(order.get("volume_remain", 0) or 0)
+        location_id = int(order.get("location_id", 0) or 0)
         is_buy = bool(order["is_buy_order"])
         row = agg[type_id]
 
@@ -47,12 +50,14 @@ def aggregate_best_prices(orders: Iterable[dict]) -> dict[int, dict]:
             if row["best_buy"] is None or price > row["best_buy"]:
                 row["best_buy"] = price
                 row["buy_volume"] = volume
+                row["best_buy_location_id"] = location_id
             elif price == row["best_buy"]:
                 row["buy_volume"] += volume
         else:
             if row["best_sell"] is None or price < row["best_sell"]:
                 row["best_sell"] = price
                 row["sell_volume"] = volume
+                row["best_sell_location_id"] = location_id
             elif price == row["best_sell"]:
                 row["sell_volume"] += volume
 

@@ -10,6 +10,7 @@ from app.services.job_service import finish_job, start_job
 from app.services.market_service import ingest_regions
 from app.services.opportunity_service import compute_opportunities
 from app.services.settings_service import get_platform_region_hub_systems, get_platform_tracked_regions
+from app.services.auth_service import get_current_user_optional
 
 ALLOWED_ROUTE_SECURITY_MODES = {
     "any",
@@ -88,6 +89,7 @@ async def opportunities(
     route_security_mode: str = Query(default="any"),
     min_system_security: float = Query(default=0.0),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
 ):
     route_security_mode = (route_security_mode or "any").strip().lower()
     if route_security_mode not in ALLOWED_ROUTE_SECURITY_MODES:
@@ -110,4 +112,5 @@ async def opportunities(
         max_jumps=max_jumps,
         route_security_mode=route_security_mode,
         min_system_security=min_system_security,
+        user_id=(current_user.id if current_user else None),
     )

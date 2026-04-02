@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.models import RegionMarketSnapshot
+from app.services.esi_market import aggregate_best_prices, fetch_region_orders
 from app.services.esi_universe import get_type_volume_m3
+from app.services.location_name_service import resolve_location_names
 from app.services.logistics_service import analyze_route, route_passes_security_filters
 
 async def compute_opportunities(
@@ -25,6 +27,7 @@ async def compute_opportunities(
     max_jumps: int | None = None,
     route_security_mode: str = "any",
     min_system_security: float = 0.0,
+    user_id: int | None = None,
 ) -> list[dict[str, Any]]:
     src_snapshot = db.query(func.max(RegionMarketSnapshot.snapshot_at)).filter(
         RegionMarketSnapshot.region_id == src_region_id
@@ -36,25 +39,11 @@ async def compute_opportunities(
     if src_snapshot is None or dst_snapshot is None:
         return []
 
-    src_rows = (
-        db.query(RegionMarketSnapshot)
-        .filter(
-            RegionMarketSnapshot.region_id == src_region_id,
-            RegionMarketSnapshot.snapshot_at == src_snapshot,
-        )
-        .all()
-    )
-    dst_rows = (
-        db.query(RegionMarketSnapshot)
-        .filter(
-            RegionMarketSnapshot.region_id == dst_region_id,
-            RegionMarketSnapshot.snapshot_at == dst_snapshot,
-        )
-        .all()
-    )
-
-    src_map = {row.type_id: row for row in src_rows}
-    dst_map = {row.type_id: row for row in dst_rows}
+    # Live orderbooks are used here so buy/sell locations can be identified without requiring a schema migration.
+    src_orders = await fetch_region_orders(region_id=src_region_id, user_agent=settings.esi_user_agent)
+    dst_orders = await fetch_region_orders(region_id=dst_region_id, user_agent=settings.esi_user_agent)
+    src_map = aggregate_best_prices(src_orders)
+    dst_map = aggregate_best_prices(dst_orders)
 
     min_roi_value = settings.min_roi if min_roi is None else min_roi
     min_qty_value = settings.min_qty if min_qty is None else min_qty
@@ -95,16 +84,16 @@ async def compute_opportunities(
 
     for type_id, src in src_map.items():
         dst = dst_map.get(type_id)
-        if not dst or src.best_sell is None or dst.best_buy is None:
+        if not dst or src["best_sell"] is None or dst["best_buy"] is None:
             continue
 
-        taxes_unit = dst.best_buy * settings.sales_tax_rate
-        broker_fees_unit = dst.best_buy * settings.broker_fee_rate
-        rough_profit = dst.best_buy - taxes_unit - broker_fees_unit - src.best_sell
+        taxes_unit = dst["best_buy"] * settings.sales_tax_rate
+        broker_fees_unit = dst["best_buy"] * settings.broker_fee_rate
+        rough_profit = dst["best_buy"] - taxes_unit - broker_fees_unit - src["best_sell"]
         if rough_profit <= 0:
             continue
 
-        qmax = min(src.sell_volume or 0, dst.buy_volume or 0)
+        qmax = min(int(src.get("sell_volume") or 0), int(dst.get("buy_volume") or 0))
         if qmax < min_qty_value:
             continue
 
@@ -112,7 +101,25 @@ async def compute_opportunities(
 
     rough_candidates = rough_candidates[: settings.max_opportunity_rows]
 
+    location_ids = []
+    for _, src, dst, _ in rough_candidates:
+        if src.get("best_sell_location_id"):
+            location_ids.append(int(src["best_sell_location_id"]))
+        if dst.get("best_buy_location_id"):
+            location_ids.append(int(dst["best_buy_location_id"]))
+
+    location_names = await resolve_location_names(db, location_ids, settings.esi_user_agent, user_id=user_id)
+
     for type_id, src, dst, qmax in rough_candidates:
+        buy_location_id = int(src.get("best_sell_location_id") or 0)
+        sell_location_id = int(dst.get("best_buy_location_id") or 0)
+        buy_location_name = location_names.get(buy_location_id)
+        sell_location_name = location_names.get(sell_location_id)
+
+        # Per user request, omit opportunities with unresolved station/structure names.
+        if not buy_location_name or not sell_location_name:
+            continue
+
         volume_m3, item_name = await get_type_volume_m3(db, type_id, settings.esi_user_agent)
         total_m3_necessary = volume_m3 * qmax
         fits_cargo = (
@@ -126,14 +133,14 @@ async def compute_opportunities(
         hauling_cost_unit = (settings.cost_per_m3_per_jump * volume_m3 * route_info["route_jumps"]) + (
             settings.base_trip_cost / max(qmax, 1)
         )
-        taxes_unit = dst.best_buy * settings.sales_tax_rate
-        broker_fees_unit = dst.best_buy * settings.broker_fee_rate
+        taxes_unit = dst["best_buy"] * settings.sales_tax_rate
+        broker_fees_unit = dst["best_buy"] * settings.broker_fee_rate
         total_fees_unit = taxes_unit + broker_fees_unit
-        profit_per_unit = dst.best_buy - total_fees_unit - src.best_sell - hauling_cost_unit
+        profit_per_unit = dst["best_buy"] - total_fees_unit - src["best_sell"] - hauling_cost_unit
         if profit_per_unit <= 0:
             continue
 
-        roi = profit_per_unit / max(src.best_sell + hauling_cost_unit, 1e-9)
+        roi = profit_per_unit / max(src["best_sell"] + hauling_cost_unit, 1e-9)
         if roi < min_roi_value:
             continue
 
@@ -149,8 +156,12 @@ async def compute_opportunities(
             "item_name": item_name,
             "src_region_id": src_region_id,
             "dst_region_id": dst_region_id,
-            "src_best_sell": src.best_sell,
-            "dst_best_buy": dst.best_buy,
+            "src_best_sell": src["best_sell"],
+            "dst_best_buy": dst["best_buy"],
+            "buy_location_id": buy_location_id,
+            "buy_location_name": buy_location_name,
+            "sell_location_id": sell_location_id,
+            "sell_location_name": sell_location_name,
             "taxes_unit": taxes_unit,
             "broker_fees_unit": broker_fees_unit,
             "total_fees_unit": total_fees_unit,

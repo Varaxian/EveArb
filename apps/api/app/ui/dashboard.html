@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-  <h1>EVE Arb v2.10 Dashboard</h1>
+  <h1>EVE Arb v2.11 Dashboard</h1>
 
   <div class="status" id="authStatus">Checking authentication...</div>
 
@@ -91,7 +91,7 @@
         <div><label>Min System Security</label><input id="minSystemSecurity" value="0.0"></div>
         <div><label>Limit</label><input id="limit" value="50"></div>
       </div>
-      <div class="mono">v2.10 uses Total m3 Available as your default cargo-cap filter and shows Total m3 Necessary on each result.</div>
+      <div class="mono">v2.11 uses Total m3 Available as your default cargo-cap filter and shows Total m3 Necessary on each result.</div>
       <button onclick="saveFilters()">Save my filters</button>
       <button onclick="loadOpportunities()">Load opportunities</button>
       <button onclick="downloadCsv()">Download CSV</button>
@@ -119,6 +119,8 @@
           <th>Name</th>
           <th>Sell</th>
           <th>Buy</th>
+          <th>Buy Location</th>
+          <th>Sell Location</th>
           <th>Profit/Unit</th>
           <th>ROI</th>
           <th>Qty</th>
@@ -269,6 +271,8 @@ async function loadOpportunities() {
       <td>${row.item_name ?? ''}</td>
       <td>${Number(row.src_best_sell ?? 0).toLocaleString()}</td>
       <td>${Number(row.dst_best_buy ?? 0).toLocaleString()}</td>
+      <td>${row.buy_location_name ?? ''}</td>
+      <td>${row.sell_location_name ?? ''}</td>
       <td>${Number(row.profit_per_unit ?? 0).toLocaleString()}</td>
       <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
       <td>${Number(row.max_qty_est ?? 0).toLocaleString()}</td>
