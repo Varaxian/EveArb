@@ -115,7 +115,10 @@ async def compute_opportunities(
     for type_id, src, dst, qmax in rough_candidates:
         volume_m3, item_name = await get_type_volume_m3(db, type_id, settings.esi_user_agent)
         total_m3_necessary = volume_m3 * qmax
-        fits_cargo = True if total_m3_available_value <= 0 else total_m3_necessary <= total_m3_available_value
+        fits_cargo = (
+            total_m3_available_value > 0
+            and total_m3_necessary <= total_m3_available_value
+        )
 
         if max_total_m3_value > 0 and total_m3_necessary > max_total_m3_value:
             continue

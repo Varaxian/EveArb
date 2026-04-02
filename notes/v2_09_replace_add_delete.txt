@@ -9,4 +9,4 @@ ADD
 - None beyond the files already included in the full repo zip
 
 COMMIT MESSAGE
-v2.09 add cargo realism and profit realism, normalize dashboard version text
+v2.10 fix fits cargo truth logic and carry forward cargo realism baseline

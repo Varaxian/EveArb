@@ -1,7 +1,7 @@
-# EveArb v2.09
+# EveArb v2.10
 
 This build advances the live v2.08 baseline with the next practical layer:
-- version text normalized to v2.09
+- version text normalized to v2.10
 - cargo realism on opportunities
 - user setting for total m3 available
 - per-opportunity total m3 necessary + fits cargo
@@ -50,4 +50,4 @@ This build advances the live v2.08 baseline with the next practical layer:
 - Scheduler is off by default. Turn it on with `ENABLE_SCHEDULER=true`.
 - Route-aware logistics uses region hub systems for jump counts.
 - Volume is cached per item type in the database.
-- v2.09 still uses simplified fee assumptions; it is more realistic than v2.08, not perfect.
+- v2.10 still uses simplified fee assumptions; it is more realistic than v2.08, not perfect.
