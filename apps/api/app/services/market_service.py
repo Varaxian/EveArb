@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.models import RegionMarketSnapshot
-from app.services.esi_market import aggregate_best_prices, fetch_region_orders
+from app.services.esi_market import stream_region_orders, update_aggregates
+from app.services.location_name_service import warm_location_cache
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -18,8 +19,14 @@ async def ingest_regions(db: Session, region_ids: list[int]) -> dict:
     npc_location_ids: list[int] = []
 
     for region_id in region_ids:
-        orders = await fetch_region_orders(region_id=region_id, user_agent=settings.esi_user_agent)
-        agg = aggregate_best_prices(orders)
+        agg: dict[int, dict] = {}
+        orders_fetched = 0
+        pages_fetched = 0
+
+        async for orders_page in stream_region_orders(region_id=region_id, user_agent=settings.esi_user_agent):
+            pages_fetched += 1
+            orders_fetched += len(orders_page)
+            update_aggregates(agg, orders_page)
 
         for type_id, row in agg.items():
             best_sell_location_id = row.get("best_sell_location_id")
@@ -46,12 +53,17 @@ async def ingest_regions(db: Session, region_ids: list[int]) -> dict:
 
         summary.append({
             "region_id": region_id,
-            "orders_fetched": len(orders),
+            "pages_fetched": pages_fetched,
+            "orders_fetched": orders_fetched,
             "types_aggregated": len(agg),
         })
 
     db.commit()
 
+    # Resolve static NPC names after commit, but keep this out of the request path in v2.13+.
+    # Leaving the helper imported for future non-blocking warm paths.
+    _ = warm_location_cache
+    _ = npc_location_ids
 
     return {
         "status": "ok",

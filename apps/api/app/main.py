@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.13", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.14", lifespan=lifespan)
 
 app.include_router(app_router)
 app.include_router(auth_router)
@@ -39,7 +39,7 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.13",
+        "service": "eve-arb-v2.14",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
@@ -63,7 +63,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.13"}
+    return {"health": "green", "version": "v2.14"}
 
 @app.get("/config-check")
 def config_check():

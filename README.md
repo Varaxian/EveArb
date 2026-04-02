@@ -1,28 +1,31 @@
-# EveArb v2.13
+# EveArb v2.14
 
-This build advances the live v2.12 baseline with a manual-ingest stall-risk reduction pass.
+This build advances the live v2.13 baseline with a streaming global-ingest refactor.
 
-## Added in v2.13
-- hard 120-second timeout around manual ingest requests
-- manual ingest now returns a 504 timeout instead of sitting at "Running..." indefinitely
-- removed synchronous NPC cache warming from the ingest request path to reduce ESI/network stall risk
+## Added in v2.14
+- region market ingest now streams ESI order pages instead of loading full regions into memory
+- aggregation happens incrementally page-by-page
+- global dataset architecture remains intact for all users
+- manual ingest keeps the v2.13 hard timeout protection
 
-## Existing v2.12 behavior retained
+## Why this matters
+- flatter memory usage during ingest
+- lower OOM risk on Railway
+- safer foundation for multi-user shared-market architecture
+- prepares the app for future scheduled global ingests
+
+## Existing behavior retained
 - best buy and best sell location IDs persist into market snapshots
-- local `location_name_cache` table remains in place
-- NPC station names can still resolve through the cache layer when needed
-- Upwell structure names are resolved lazily only for surviving opportunity candidates
+- local location cache remains in place
+- Buy Location and Sell Location remain on opportunities
 - unresolved structures are omitted from results
-- request-time live orderbook lookups remain removed from the opportunities path
+- cargo realism and fits-cargo truth logic remain intact
+- profit realism with broker fee, sales tax, and hauling assumptions remains intact
+
+## Next logical layer
+- user-saved Active Opportunities
+- Completed / Failed status workflow
+- fail-reason dropdown analytics on saved opportunity snapshots
 
 ## Operational note
-After deploying v2.13, manual ingest should return faster and fail more honestly. If location names are missing for newer station IDs, they can still be resolved later through the existing location-cache path without blocking ingest.
-
-## Key routes
-- `/dashboard`
-- `POST /market/ingest`
-- `GET /market/opportunities`
-- `GET /export/opportunities.csv`
-- `GET /logistics/route`
-- `GET /scheduler/status`
-- `POST /scheduler/run`
+After deploying v2.14, global market ingest should use much less memory than earlier builds while keeping the same shared-data behavior.
