@@ -1,0 +1,21 @@
+EVE ARB SOURCE UPDATE – v2.04
+
+STATUS:
+- v2.03 validated persistence and first ingest
+- v2.04 adds CSV export, scheduler, route-aware logistics, and dashboard
+
+INCLUDED:
+- modular service separation
+- browser dashboard
+- CSV export endpoint
+- background scheduler support
+- manual scheduler run endpoint
+- route-aware jump cost
+- cached type volume metadata
+
+NEXT:
+- refresh token rotation
+- richer item name resolution everywhere
+- better filtering and paging
+- station-level logic
+- contract/logistics layer depth

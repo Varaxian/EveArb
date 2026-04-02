@@ -1,0 +1,24 @@
+Version: v2.07 patch
+
+Replace:
+- apps/api/app/db/models.py
+- apps/api/app/services/settings_service.py
+- apps/api/app/services/opportunity_service.py
+- apps/api/app/services/scheduler_service.py
+- apps/api/app/routes/market.py
+- apps/api/app/routes/export.py
+- apps/api/app/routes/settings.py
+- apps/api/app/routes/scheduler.py
+- apps/api/app/main.py
+- apps/api/app/ui/dashboard.html
+
+Add:
+- apps/api/app/services/universe_service.py
+- apps/api/app/services/logistics_service.py
+- apps/api/app/routes/logistics.py
+
+Delete:
+- none
+
+Commit message:
+v2.07 - logistics layer + route security selectors

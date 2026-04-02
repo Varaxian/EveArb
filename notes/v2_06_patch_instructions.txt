@@ -1,0 +1,25 @@
+Version: v2.06 patch
+
+Replace:
+- apps/api/app/db/models.py
+- apps/api/app/services/settings_service.py
+- apps/api/app/routes/auth.py
+- apps/api/app/routes/settings.py
+- apps/api/app/main.py
+- apps/api/app/ui/dashboard.html
+
+Add:
+- apps/api/app/services/auth_service.py
+- apps/api/app/routes/app.py
+
+Delete:
+- none
+
+Commit message:
+v2.06 - multi-user auth foundation + per-user settings + token refresh scaffolding
+
+Notes:
+- This introduces app users and session cookies on top of EVE SSO.
+- Platform settings remain shared.
+- Dashboard filters become per-user preferences.
+- Token refresh is scaffolded via /auth/refresh.

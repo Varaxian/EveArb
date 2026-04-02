@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Iterable
+
+import httpx
+
+ESI_BASE_URL = "https://esi.evetech.net"
+
+async def fetch_region_orders(region_id: int, user_agent: str) -> list[dict]:
+    headers = {"User-Agent": user_agent}
+    params = {"datasource": "tranquility", "order_type": "all", "page": 1}
+    all_orders: list[dict] = []
+
+    async with httpx.AsyncClient(base_url=ESI_BASE_URL, timeout=60.0, headers=headers) as client:
+        first = await client.get(f"/v1/markets/{region_id}/orders/", params=params)
+        first.raise_for_status()
+        all_orders.extend(first.json())
+        pages = int(first.headers.get("X-Pages", "1"))
+
+        for page in range(2, pages + 1):
+            response = await client.get(
+                f"/v1/markets/{region_id}/orders/",
+                params={"datasource": "tranquility", "order_type": "all", "page": page},
+            )
+            response.raise_for_status()
+            all_orders.extend(response.json())
+
+    return all_orders
+
+def aggregate_best_prices(orders: Iterable[dict]) -> dict[int, dict]:
+    agg: dict[int, dict] = defaultdict(lambda: {
+        "best_sell": None,
+        "best_buy": None,
+        "sell_volume": 0,
+        "buy_volume": 0,
+    })
+
+    for order in orders:
+        type_id = int(order["type_id"])
+        price = float(order["price"])
+        volume = int(order.get("volume_remain", 0) or 0)
+        is_buy = bool(order["is_buy_order"])
+        row = agg[type_id]
+
+        if is_buy:
+            if row["best_buy"] is None or price > row["best_buy"]:
+                row["best_buy"] = price
+                row["buy_volume"] = volume
+            elif price == row["best_buy"]:
+                row["buy_volume"] += volume
+        else:
+            if row["best_sell"] is None or price < row["best_sell"]:
+                row["best_sell"] = price
+                row["sell_volume"] = volume
+            elif price == row["best_sell"]:
+                row["sell_volume"] += volume
+
+    return agg

@@ -1,0 +1,20 @@
+Version: v2.05 patch
+
+Replace:
+- apps/api/app/services/settings_service.py
+- apps/api/app/services/job_service.py
+- apps/api/app/services/opportunity_service.py
+- apps/api/app/routes/settings.py
+- apps/api/app/routes/market.py
+- apps/api/app/routes/export.py
+- apps/api/app/routes/scheduler.py
+- apps/api/app/ui/dashboard.html
+
+Add:
+- none
+
+Delete:
+- none
+
+Commit message:
+v2.05 - filtering + dashboard + scheduler hardening
