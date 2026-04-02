@@ -17,10 +17,11 @@
     .inline { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .inline > div { min-width: 120px; flex: 1; }
     .status { padding: 10px; border-radius: 8px; background: #0f172a; margin-bottom: 16px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#0f172a; border:1px solid #374151; }
   </style>
 </head>
 <body>
-  <h1>EVE Arb v2.07 Dashboard</h1>
+  <h1>EVE Arb v2.09 Dashboard</h1>
 
   <div class="status" id="authStatus">Checking authentication...</div>
 
@@ -76,20 +77,21 @@
         <div><label>Minimum ROI</label><input id="minRoi" value="0.03"></div>
         <div><label>Minimum Qty</label><input id="minQty" value="10"></div>
         <div><label>Min Net Profit</label><input id="minNetProfit" value="0"></div>
-        <div><label>Max Total m3</label><input id="maxTotalM3" value="0"></div>
+        <div><label>Total m3 Available</label><input id="totalM3Available" value="0"></div>
         <div><label>Max Jumps</label><input id="maxJumps" value="0"></div>
         <div><label>Route Security</label>
           <select id="routeSecurityMode">
             <option value="any">Any</option>
             <option value="highsec_only">High-sec only</option>
-            <option value="no_null">No null</option>
-            <option value="lowsec_allowed">Low-sec allowed</option>
-            <option value="nullsec_allowed">Null-sec allowed</option>
+            <option value="high_low">High + Low</option>
+            <option value="avoid_null">Avoid null</option>
+            <option value="includes_null">Includes null</option>
           </select>
         </div>
         <div><label>Min System Security</label><input id="minSystemSecurity" value="0.0"></div>
         <div><label>Limit</label><input id="limit" value="50"></div>
       </div>
+      <div class="mono">v2.09 uses Total m3 Available as your default cargo-cap filter and shows Total m3 Necessary on each result.</div>
       <button onclick="saveFilters()">Save my filters</button>
       <button onclick="loadOpportunities()">Load opportunities</button>
       <button onclick="downloadCsv()">Download CSV</button>
@@ -122,9 +124,11 @@
           <th>Qty</th>
           <th>Jumps</th>
           <th>Security</th>
-          <th>Total m3</th>
+          <th>Total m3 Necessary</th>
+          <th>Fits Cargo</th>
           <th>Net Profit</th>
           <th>Profit/m3</th>
+          <th>ISK/Jump</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -133,13 +137,15 @@
 
 <script>
 function currentFilters() {
+  const totalM3Available = document.getElementById('totalM3Available').value;
   return {
     src_region_id: document.getElementById('srcRegion').value,
     dst_region_id: document.getElementById('dstRegion').value,
     min_roi: document.getElementById('minRoi').value,
     min_qty: document.getElementById('minQty').value,
     min_net_profit_isk: document.getElementById('minNetProfit').value,
-    max_total_m3: document.getElementById('maxTotalM3').value,
+    total_m3_available: totalM3Available,
+    max_total_m3: totalM3Available,
     max_jumps: document.getElementById('maxJumps').value,
     route_security_mode: document.getElementById('routeSecurityMode').value,
     min_system_security: document.getElementById('minSystemSecurity').value,
@@ -184,7 +190,7 @@ async function loadSettings() {
   document.getElementById('minRoi').value = f.min_roi ?? 0.03;
   document.getElementById('minQty').value = f.min_qty ?? 10;
   document.getElementById('minNetProfit').value = f.min_net_profit_isk ?? 0;
-  document.getElementById('maxTotalM3').value = f.max_total_m3 ?? 0;
+  document.getElementById('totalM3Available').value = f.total_m3_available ?? f.max_total_m3 ?? 0;
   document.getElementById('maxJumps').value = f.max_jumps ?? 0;
   document.getElementById('routeSecurityMode').value = f.route_security_mode ?? 'any';
   document.getElementById('minSystemSecurity').value = f.min_system_security ?? 0.0;
@@ -205,11 +211,13 @@ async function saveHubSystems() {
 }
 async function saveFilters() {
   const el = document.getElementById('filtersResult');
+  const totalM3Available = Number(document.getElementById('totalM3Available').value);
   const payload = {
     min_roi: Number(document.getElementById('minRoi').value),
     min_qty: Number(document.getElementById('minQty').value),
     min_net_profit_isk: Number(document.getElementById('minNetProfit').value),
-    max_total_m3: Number(document.getElementById('maxTotalM3').value),
+    total_m3_available: totalM3Available,
+    max_total_m3: totalM3Available,
     max_jumps: Number(document.getElementById('maxJumps').value),
     route_security_mode: document.getElementById('routeSecurityMode').value,
     min_system_security: Number(document.getElementById('minSystemSecurity').value),
@@ -255,6 +263,7 @@ async function loadOpportunities() {
   tbody.innerHTML = '';
   for (const row of data) {
     const tr = document.createElement('tr');
+    const fits = row.fits_cargo ? 'Yes' : 'No';
     tr.innerHTML = `
       <td>${row.type_id ?? ''}</td>
       <td>${row.item_name ?? ''}</td>
@@ -264,10 +273,12 @@ async function loadOpportunities() {
       <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
       <td>${Number(row.max_qty_est ?? 0).toLocaleString()}</td>
       <td>${row.route_jumps ?? ''}</td>
-      <td>${row.route_security_profile ?? ''}</td>
-      <td>${Number(row.total_m3 ?? 0).toLocaleString()}</td>
+      <td>${row.route_security_profile ?? ''} / min ${row.min_security_on_path ?? ''}</td>
+      <td>${Number(row.total_m3_necessary ?? row.total_m3 ?? 0).toLocaleString()}</td>
+      <td><span class="pill">${fits}</span></td>
       <td>${Number(row.net_profit_isk ?? 0).toLocaleString()}</td>
       <td>${row.profit_per_m3 == null ? '' : Number(row.profit_per_m3).toLocaleString()}</td>
+      <td>${Number(row.isk_per_jump ?? 0).toLocaleString()}</td>
     `;
     tbody.appendChild(tr);
   }

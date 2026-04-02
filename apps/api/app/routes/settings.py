@@ -29,6 +29,7 @@ class DashboardFiltersPayload(BaseModel):
     min_qty: int
     min_net_profit_isk: float = 0.0
     max_total_m3: float = 0.0
+    total_m3_available: float = 0.0
     max_jumps: int = 0
     limit: int = 50
     route_security_mode: str = "any"

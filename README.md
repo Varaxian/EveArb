@@ -1,16 +1,29 @@
-# EVE Arb v2.04
+# EveArb v2.09
 
-This build keeps the working v2.03 base and adds the full next layer:
-- CSV export
-- scheduler endpoints and optional background scheduler
-- route-aware logistics using ESI route jumps
-- minimal browser dashboard
+This build advances the live v2.08 baseline with the next practical layer:
+- version text normalized to v2.09
+- cargo realism on opportunities
+- user setting for total m3 available
+- per-opportunity total m3 necessary + fits cargo
+- profit realism pass with broker fee + sales tax + hauling cost assumptions
+- route security filter options aligned with backend
+
+## Core behavior
+- `Total m3 Available` is a per-user dashboard setting.
+- The dashboard uses that value as the default cargo-cap filter when loading opportunities.
+- Each opportunity now returns:
+  - `total_m3_necessary`
+  - `total_m3_available`
+  - `fits_cargo`
+  - `broker_fees_unit`
+  - `total_fees_unit`
+  - `isk_per_jump`
 
 ## Separation of concerns
 - `routes/` contains HTTP surface only
-- `services/` contains ESI access, ingest, opportunities, export, scheduler, and settings logic
+- `services/` contains ESI access, ingest, logistics, opportunities, export, scheduler, and settings logic
 - `db/` contains database setup and models
-- `ui/` contains the basic dashboard HTML
+- `ui/` contains the browser dashboard HTML
 
 ## Railway variables
 - DATABASE_URL
@@ -29,6 +42,7 @@ This build keeps the working v2.03 base and adds the full next layer:
 - `POST /market/ingest`
 - `GET /market/opportunities`
 - `GET /export/opportunities.csv`
+- `GET /logistics/route`
 - `GET /scheduler/status`
 - `POST /scheduler/run`
 
@@ -36,3 +50,4 @@ This build keeps the working v2.03 base and adds the full next layer:
 - Scheduler is off by default. Turn it on with `ENABLE_SCHEDULER=true`.
 - Route-aware logistics uses region hub systems for jump counts.
 - Volume is cached per item type in the database.
+- v2.09 still uses simplified fee assumptions; it is more realistic than v2.08, not perfect.
