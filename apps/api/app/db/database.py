@@ -34,9 +34,9 @@ def ensure_runtime_schema() -> None:
         columns = {col["name"] for col in inspector.get_columns("region_market_snapshots")}
         with engine.begin() as conn:
             if "best_sell_location_id" not in columns:
-                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_sell_location_id INTEGER"))
+                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_sell_location_id BIGINT"))
             if "best_buy_location_id" not in columns:
-                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_buy_location_id INTEGER"))
+                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_buy_location_id BIGINT"))
 
 def get_db():
     db = SessionLocal()
