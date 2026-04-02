@@ -11,12 +11,16 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.database import get_db
-from app.db.models import EveAuthToken, EveCharacter, User, UserSession
+from app.db.models import EveAuthToken, EveCharacter, User, UserRole, UserSession
 
 AUTH_BASE = "https://login.eveonline.com/v2/oauth/authorize"
 TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
 VERIFY_URL = "https://login.eveonline.com/oauth/verify"
 SESSION_COOKIE_NAME = "evearb_session"
+SUPER_ADMIN_HANDLE = "Varaxian"
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+ROLE_SUPER_ADMIN = "super_admin"
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -73,6 +77,46 @@ def parse_expiry(token_data: dict) -> datetime | None:
     except Exception:
         return None
 
+def _is_varaxian_identity(*, handle: str | None = None, character_name: str | None = None) -> bool:
+    return (handle or "").strip() == SUPER_ADMIN_HANDLE or (character_name or "").strip() == SUPER_ADMIN_HANDLE
+
+def get_user_role(db: Session, user_id: int) -> str:
+    row = db.query(UserRole).filter(UserRole.user_id == user_id).first()
+    return row.role if row and row.role else ROLE_USER
+
+def ensure_user_role(db: Session, user: User, *, character_name: str | None = None) -> UserRole:
+    desired_role = ROLE_SUPER_ADMIN if _is_varaxian_identity(handle=user.handle, character_name=character_name) else ROLE_USER
+    row = db.query(UserRole).filter(UserRole.user_id == user.id).first()
+    if row is None:
+        row = UserRole(user_id=user.id, role=desired_role)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+    if desired_role == ROLE_SUPER_ADMIN and row.role != ROLE_SUPER_ADMIN:
+        row.role = ROLE_SUPER_ADMIN
+        db.commit()
+        db.refresh(row)
+    return row
+
+def set_user_role(db: Session, *, actor_user: User, target_user: User, role: str) -> UserRole:
+    if role not in {ROLE_USER, ROLE_ADMIN, ROLE_SUPER_ADMIN}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    actor_role = get_user_role(db, actor_user.id)
+    if actor_role != ROLE_SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Only super_admin can manage admins")
+    if _is_varaxian_identity(handle=target_user.handle) and role != ROLE_SUPER_ADMIN:
+        raise HTTPException(status_code=400, detail="Varaxian must remain super_admin")
+    row = db.query(UserRole).filter(UserRole.user_id == target_user.id).first()
+    if row is None:
+        row = UserRole(user_id=target_user.id, role=role)
+        db.add(row)
+    else:
+        row.role = role
+    db.commit()
+    db.refresh(row)
+    return row
+
 def upsert_user_from_esi(db: Session, *, token_data: dict, verify_data: dict) -> tuple[User, EveCharacter, EveAuthToken]:
     character_id = int(verify_data["CharacterID"])
     owner_hash = verify_data.get("CharacterOwnerHash")
@@ -90,6 +134,11 @@ def upsert_user_from_esi(db: Session, *, token_data: dict, verify_data: dict) ->
     if user is None:
         user = User(handle=verify_data.get("CharacterName"), is_active=True)
         db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        user.handle = verify_data.get("CharacterName", user.handle)
+        user.is_active = True
         db.commit()
         db.refresh(user)
 
@@ -117,6 +166,8 @@ def upsert_user_from_esi(db: Session, *, token_data: dict, verify_data: dict) ->
         character.is_active = True
         db.commit()
         db.refresh(character)
+
+    ensure_user_role(db, user, character_name=character.character_name)
 
     token = (
         db.query(EveAuthToken)
@@ -151,6 +202,7 @@ def upsert_user_from_esi(db: Session, *, token_data: dict, verify_data: dict) ->
     return user, character, token
 
 def create_user_session(db: Session, user: User, *, days_valid: int = 30) -> UserSession:
+    ensure_user_role(db, user)
     session = UserSession(
         user_id=user.id,
         session_token=secrets.token_urlsafe(48),
@@ -187,6 +239,7 @@ def get_current_session_and_user(db: Session, session_token: str | None) -> tupl
     if user is None:
         return None, None
 
+    ensure_user_role(db, user)
     session.last_seen_at = utcnow()
     db.commit()
     return session, user
@@ -215,6 +268,24 @@ def get_current_session(
     if session is None or user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return session
+
+def require_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    role = get_user_role(db, current_user.id)
+    if role not in {ROLE_ADMIN, ROLE_SUPER_ADMIN}:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+def require_super_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    role = get_user_role(db, current_user.id)
+    if role != ROLE_SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    return current_user
 
 def latest_active_token_for_user(db: Session, user_id: int) -> EveAuthToken | None:
     return (

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import User
-from app.services.auth_service import get_current_session, get_current_user, latest_active_token_for_user, latest_characters_for_user
+from app.services.auth_service import get_current_session, get_current_user, get_user_role, latest_active_token_for_user, latest_characters_for_user
 
 router = APIRouter(prefix="/app", tags=["app"])
 
@@ -18,6 +18,7 @@ def app_me(current_user: User = Depends(get_current_user), current_session = Dep
             "id": current_user.id,
             "handle": current_user.handle,
             "is_active": current_user.is_active,
+            "role": get_user_role(db, current_user.id),
         },
         "session": {
             "id": current_session.id,

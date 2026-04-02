@@ -1,0 +1,8 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Active Opportunities</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:Arial,sans-serif;margin:20px;background:#111827;color:#e5e7eb}.nav{display:flex;gap:12px;margin-bottom:20px}.nav a{color:#93c5fd;text-decoration:none;padding:8px 12px;border:1px solid #374151;border-radius:8px}.card{background:#1f2937;border-radius:10px;padding:16px}.mono{font-family:ui-monospace,monospace;white-space:pre-wrap;font-size:12px}</style></head>
+<body>
+<div class="nav"><a href="/dashboard">Dashboard</a><a href="/active-opportunities">Active Opportunities</a><a id="adminNav" href="/admin" style="display:none;">Admin</a></div>
+<h1>Active Opportunities</h1><div class="card"><button onclick="loadActive()">Refresh</button><pre id="out" class="mono"></pre></div>
+<script>async function loadActive(){const me=await fetch('/app/me'); if(me.status===401){document.getElementById('out').textContent='Not authenticated'; return;} const meData=await me.json(); if(meData.user && ['admin','super_admin'].includes(meData.user.role)){document.getElementById('adminNav').style.display='inline-block';} const r=await fetch('/opportunities/active'); document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);} loadActive();</script>
+</body></html>

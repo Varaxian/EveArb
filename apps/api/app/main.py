@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.db.database import Base, engine, ensure_runtime_schema
+from app.routes.admin import router as admin_router
 from app.routes.app import router as app_router
 from app.routes.auth import router as auth_router
 from app.routes.export import router as export_router
@@ -25,9 +26,10 @@ async def lifespan(app: FastAPI):
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.15", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.20", lifespan=lifespan)
 
 app.include_router(app_router)
+app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(settings_router)
 app.include_router(market_router)
@@ -41,13 +43,18 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.15",
+        "service": "eve-arb-v2.20",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
             "/config-check",
             "/app/me",
             "/auth/login",
+            "/admin/ingest/run",
+            "/admin/scheduler/status",
+            "/admin/scheduler/restart",
+            "/admin/sessions",
+            "/admin/users",
             "/auth/logout",
             "/auth/sessions",
             "/auth/refresh",
@@ -62,12 +69,14 @@ def root():
             "/scheduler/status",
             "/scheduler/run",
             "/dashboard",
+            "/active-opportunities",
+            "/admin",
         ],
     }
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.15"}
+    return {"health": "green", "version": "v2.20"}
 
 @app.get("/config-check")
 def config_check():

@@ -66,3 +66,9 @@ def scheduler_state() -> dict:
         "task_running": bool(_scheduler_task and not _scheduler_task.done()),
         "interval_seconds": settings.scheduler_interval_seconds,
     }
+
+
+async def restart_scheduler() -> dict:
+    await stop_scheduler()
+    start_scheduler()
+    return scheduler_state()
