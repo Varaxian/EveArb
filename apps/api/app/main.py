@@ -11,6 +11,7 @@ from app.routes.auth import router as auth_router
 from app.routes.export import router as export_router
 from app.routes.logistics import router as logistics_router
 from app.routes.market import router as market_router
+from app.routes.opportunities import router as opportunities_router
 from app.routes.scheduler import router as scheduler_router
 from app.routes.settings import router as settings_router
 from app.routes.ui import router as ui_router
@@ -24,12 +25,13 @@ async def lifespan(app: FastAPI):
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.14", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.15", lifespan=lifespan)
 
 app.include_router(app_router)
 app.include_router(auth_router)
 app.include_router(settings_router)
 app.include_router(market_router)
+app.include_router(opportunities_router)
 app.include_router(export_router)
 app.include_router(logistics_router)
 app.include_router(scheduler_router)
@@ -39,7 +41,7 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.14",
+        "service": "eve-arb-v2.15",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
@@ -53,6 +55,8 @@ def root():
             "/market/ingest",
             "/market/latest",
             "/market/opportunities",
+            "/opportunities/save",
+            "/opportunities/active",
             "/export/opportunities.csv",
             "/logistics/route",
             "/scheduler/status",
@@ -63,7 +67,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.14"}
+    return {"health": "green", "version": "v2.15"}
 
 @app.get("/config-check")
 def config_check():

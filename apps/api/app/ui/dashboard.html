@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-  <h1>EVE Arb v2.14 Dashboard</h1>
+  <h1>EVE Arb v2.15 Dashboard</h1>
 
   <div class="status" id="authStatus">Checking authentication...</div>
 
@@ -117,8 +117,8 @@
         <tr>
           <th>Type</th>
           <th>Name</th>
-          <th>Buy</th>
           <th>Sell</th>
+          <th>Buy</th>
           <th>Buy Location</th>
           <th>Sell Location</th>
           <th>Profit/Unit</th>
@@ -131,6 +131,32 @@
           <th>Net Profit</th>
           <th>Profit/m3</th>
           <th>ISK/Jump</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Active Opportunities</h3>
+    <button onclick="loadActiveOpportunities()">Refresh active opportunities</button>
+    <div id="activeMeta" class="mono"></div>
+    <table id="activeOppTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Buy</th>
+          <th>Sell</th>
+          <th>Buy Location</th>
+          <th>Sell Location</th>
+          <th>Expected Profit</th>
+          <th>ROI</th>
+          <th>Qty</th>
+          <th>Status</th>
+          <th>Fail Reason</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -283,9 +309,70 @@ async function loadOpportunities() {
       <td>${Number(row.net_profit_isk ?? 0).toLocaleString()}</td>
       <td>${row.profit_per_m3 == null ? '' : Number(row.profit_per_m3).toLocaleString()}</td>
       <td>${Number(row.isk_per_jump ?? 0).toLocaleString()}</td>
+      <td><button>Save</button></td>
     `;
+    tr.querySelector('button').onclick = () => saveOpportunity(row);
     tbody.appendChild(tr);
   }
+}
+async function saveOpportunity(row) {
+  const r = await fetch('/opportunities/save', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(row)
+  });
+  const data = await r.json();
+  document.getElementById('activeMeta').textContent = JSON.stringify(data, null, 2);
+  await loadActiveOpportunities();
+}
+async function loadActiveOpportunities() {
+  const r = await fetch('/opportunities/active');
+  if (r.status === 401) { document.getElementById('activeMeta').textContent = 'Login required'; return; }
+  const data = await r.json();
+  document.getElementById('activeMeta').textContent = `Rows: ${data.length}`;
+  const tbody = document.querySelector('#activeOppTable tbody');
+  tbody.innerHTML = '';
+  for (const row of data) {
+    const tr = document.createElement('tr');
+    const completeDisabled = row.status !== 'active' ? 'disabled' : '';
+    const failDisabled = row.status !== 'active' ? 'disabled' : '';
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td>${row.item_name ?? ''}</td>
+      <td>${Number(row.buy_price ?? 0).toLocaleString()}</td>
+      <td>${Number(row.sell_price ?? 0).toLocaleString()}</td>
+      <td>${row.buy_location_name ?? ''}</td>
+      <td>${row.sell_location_name ?? ''}</td>
+      <td>${Number(row.expected_net_profit_isk ?? 0).toLocaleString()}</td>
+      <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
+      <td>${Number(row.quantity ?? 0).toLocaleString()}</td>
+      <td><span class="pill">${row.status}</span></td>
+      <td>${row.fail_reason ?? ''}</td>
+      <td>
+        <button ${completeDisabled}>Complete</button>
+        <button ${failDisabled}>Fail</button>
+      </td>
+    `;
+    const buttons = tr.querySelectorAll('button');
+    buttons[0].onclick = () => completeOpportunity(row.id);
+    buttons[1].onclick = () => failOpportunity(row.id);
+    tbody.appendChild(tr);
+  }
+}
+async function completeOpportunity(id) {
+  const r = await fetch(`/opportunities/${id}/complete`, { method: 'POST' });
+  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
+  await loadActiveOpportunities();
+}
+async function failOpportunity(id) {
+  const fail_reason = prompt('Fail reason (price_changed, order_gone, insufficient_volume, cargo_too_large, route_not_safe, structure_access_denied, competition, insufficient_isk, manual_abort, other):', 'price_changed') || 'other';
+  const r = await fetch(`/opportunities/${id}/fail`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ fail_reason })
+  });
+  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
+  await loadActiveOpportunities();
 }
 function downloadCsv() { window.location = '/export/opportunities.csv?' + qp().toString(); }
 
@@ -293,6 +380,7 @@ loadMe();
 loadSettings();
 loadScheduler();
 loadSessions();
+loadActiveOpportunities();
 </script>
 </body>
 </html>
