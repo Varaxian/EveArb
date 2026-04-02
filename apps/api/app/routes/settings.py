@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import User
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, require_admin, write_admin_audit_log
 from app.services.settings_service import (
     get_platform_region_hub_systems,
     get_platform_tracked_regions,
@@ -45,13 +45,15 @@ def get_settings(current_user: User = Depends(get_current_user), db: Session = D
     }
 
 @router.post("/platform")
-def save_platform_settings(payload: PlatformSettingsPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def save_platform_settings(payload: PlatformSettingsPayload, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     tracked = set_platform_tracked_regions(db, payload.tracked_regions)
+    write_admin_audit_log(db, actor_user_id=current_user.id, action="save_tracked_regions", target_type="platform_settings", details_json=str({"tracked_regions": tracked}))
     return {"status": "saved", "tracked_regions": tracked}
 
 @router.post("/platform/hubs")
-def save_hubs(payload: HubSystemsPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def save_hubs(payload: HubSystemsPayload, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     mapping = set_platform_region_hub_systems(db, payload.region_hub_systems)
+    write_admin_audit_log(db, actor_user_id=current_user.id, action="save_hub_systems", target_type="platform_settings", details_json=str(mapping))
     return {"status": "saved", "region_hub_systems": mapping}
 
 @router.post("/filters")

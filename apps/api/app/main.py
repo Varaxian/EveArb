@@ -8,7 +8,6 @@ from app.config import settings
 from app.db.database import Base, engine, ensure_runtime_schema
 from app.routes.app import router as app_router
 from app.routes.auth import router as auth_router
-from app.routes.admin import router as admin_router
 from app.routes.export import router as export_router
 from app.routes.logistics import router as logistics_router
 from app.routes.market import router as market_router
@@ -21,19 +20,15 @@ from app.services.scheduler_service import start_scheduler, stop_scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    try:
-        ensure_runtime_schema()
-    except Exception as exc:
-        print(f"[WARN] ensure_runtime_schema failed: {exc}")
+    ensure_runtime_schema()
     start_scheduler()
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.20.04", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.20.05", lifespan=lifespan)
 
 app.include_router(app_router)
 app.include_router(auth_router)
-app.include_router(admin_router)
 app.include_router(settings_router)
 app.include_router(market_router)
 app.include_router(opportunities_router)
@@ -46,7 +41,7 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.20.04",
+        "service": "eve-arb-v2.20.05",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
@@ -69,18 +64,12 @@ def root():
             "/dashboard",
             "/active-opportunities",
             "/administrator-settings",
-            "/admin",
-            "/admin/users",
-            "/admin/sessions",
-            "/admin/audit-logs",
-            "/admin/scheduler/status",
-            "/admin/ingest/run",
         ],
     }
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.20.04"}
+    return {"health": "green", "version": "v2.20.05"}
 
 @app.get("/config-check")
 def config_check():

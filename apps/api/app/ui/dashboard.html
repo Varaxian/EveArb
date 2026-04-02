@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html>
 <head>
@@ -12,23 +13,22 @@
     button { cursor: pointer; width: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     th, td { border-bottom: 1px solid #374151; padding: 8px; text-align: left; font-size: 14px; }
-    a { color: #93c5fd; }
+    a, .nav a { color: #93c5fd; text-decoration: none; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; font-size: 12px; }
     .inline { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .inline > div { min-width: 120px; flex: 1; }
     .status { padding: 10px; border-radius: 8px; background: #0f172a; margin-bottom: 16px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#0f172a; border:1px solid #374151; }
+    .nav { display:flex; gap:16px; margin-bottom:16px; align-items:center; }
+    .hidden { display:none; }
   </style>
 </head>
 <body>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
-  <h1>EVE Arb v2.20.02</h1>
-  <div class="inline">
-    <a href="/dashboard" class="pill">Dashboard</a>
-    <a href="/active-opportunities" class="pill">Active Opportunities</a>
-    <a href="/administrator-settings" class="pill" id="adminNav" style="display:none;">Administrator Settings</a>
+  <h1>EVE Arb v2.20.05 Dashboard</h1>
+  <div class="nav">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/active-opportunities">Active Opportunities</a>
+    <a id="adminNav" class="hidden" href="/administrator-settings">Administrator Settings</a>
   </div>
-</div>
 
   <div class="status" id="authStatus">Checking authentication...</div>
 
@@ -39,39 +39,6 @@
       <button onclick="logout()">Logout</button>
       <button onclick="refreshToken()">Refresh token</button>
       <div id="meResult" class="mono"></div>
-    </div>
-    <div class="card admin-only" style="display:none;">
-      <h3>Manual ingest</h3>
-      <button onclick="runIngest()">Run ingest now</button>
-      <div id="ingestResult" class="mono"></div>
-    </div>
-    <div class="card admin-only" style="display:none;">
-      <h3>Scheduler</h3>
-      <button onclick="loadScheduler()">Refresh scheduler status</button>
-      <button onclick="runScheduler()">Run scheduler cycle now</button>
-      <div id="schedulerResult" class="mono"></div>
-    </div>
-    <div class="card admin-only" style="display:none;">
-      <h3>Auth sessions</h3>
-      <button onclick="loadSessions()">Refresh sessions</button>
-      <div id="sessionsResult" class="mono"></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="card admin-only" style="display:none;">
-      <h3>Platform tracked regions</h3>
-      <label>Comma-separated region IDs</label>
-      <input id="trackedRegions" value="10000002,10000043">
-      <button onclick="saveTrackedRegions()">Save tracked regions</button>
-      <div id="trackedRegionsResult" class="mono"></div>
-    </div>
-    <div class="card admin-only" style="display:none;">
-      <h3>Platform hub systems</h3>
-      <label>JSON mapping of region → hub system</label>
-      <textarea id="hubSystems" rows="6">{}</textarea>
-      <button onclick="saveHubSystems()">Save hub systems</button>
-      <div id="hubSystemsResult" class="mono"></div>
     </div>
   </div>
 
@@ -98,7 +65,6 @@
         <div><label>Min System Security</label><input id="minSystemSecurity" value="0.0"></div>
         <div><label>Limit</label><input id="limit" value="50"></div>
       </div>
-      <div class="mono">v2.14 uses Total m3 Available as your default cargo-cap filter and shows Total m3 Necessary on each result.</div>
       <button onclick="saveFilters()">Save my filters</button>
       <button onclick="loadOpportunities()">Load opportunities</button>
       <button onclick="downloadCsv()">Download CSV</button>
@@ -119,55 +85,18 @@
   <div class="card">
     <h3>Opportunities</h3>
     <div id="opportunitiesMeta" class="mono"></div>
-    <table id="oppTable">
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Name</th>
-          <th>Sell</th>
-          <th>Buy</th>
-          <th>Buy Location</th>
-          <th>Sell Location</th>
-          <th>Profit/Unit</th>
-          <th>ROI</th>
-          <th>Qty</th>
-          <th>Jumps</th>
-          <th>Security</th>
-          <th>Total m3 Necessary</th>
-          <th>Fits Cargo</th>
-          <th>Net Profit</th>
-          <th>Profit/m3</th>
-          <th>ISK/Jump</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <table id="oppTable"><thead><tr>
+      <th>Type</th><th>Name</th><th>Sell</th><th>Buy</th><th>Buy Location</th><th>Sell Location</th><th>Profit/Unit</th><th>ROI</th><th>Qty</th><th>Jumps</th><th>Security</th><th>Total m3 Necessary</th><th>Fits Cargo</th><th>Net Profit</th><th>Profit/m3</th><th>ISK/Jump</th><th>Action</th>
+    </tr></thead><tbody></tbody></table>
   </div>
 
   <div class="card">
     <h3>Active Opportunities</h3>
     <button onclick="loadActiveOpportunities()">Refresh active opportunities</button>
     <div id="activeMeta" class="mono"></div>
-    <table id="activeOppTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Buy</th>
-          <th>Sell</th>
-          <th>Buy Location</th>
-          <th>Sell Location</th>
-          <th>Expected Profit</th>
-          <th>ROI</th>
-          <th>Qty</th>
-          <th>Status</th>
-          <th>Fail Reason</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <table id="activeOppTable"><thead><tr>
+      <th>ID</th><th>Name</th><th>Buy</th><th>Sell</th><th>Buy Location</th><th>Sell Location</th><th>Expected Profit</th><th>ROI</th><th>Qty</th><th>Status</th><th>Fail Reason</th><th>Actions</th>
+    </tr></thead><tbody></tbody></table>
   </div>
 
 <script>
@@ -187,12 +116,9 @@ function currentFilters() {
     limit: document.getElementById('limit').value
   };
 }
-function qp() {
-  return new URLSearchParams(currentFilters());
-}
+function qp() { return new URLSearchParams(currentFilters()); }
 function login() { window.location = '/auth/login?next_path=/dashboard'; }
 async function logout() { await fetch('/auth/logout', { method: 'POST' }); window.location = '/dashboard'; }
-
 async function refreshToken() {
   const el = document.getElementById('meResult');
   const r = await fetch('/auth/refresh', { method: 'POST' });
@@ -200,32 +126,26 @@ async function refreshToken() {
   el.textContent = JSON.stringify(data, null, 2);
   await loadMe();
 }
-
 async function loadMe() {
   const status = document.getElementById('authStatus');
   const el = document.getElementById('meResult');
+  const adminNav = document.getElementById('adminNav');
   const r = await fetch('/app/me');
   if (r.status === 401) {
     status.textContent = 'Not authenticated. Connect your EVE character to unlock per-user settings and token refresh.';
     el.textContent = '';
+    adminNav.classList.add('hidden');
     return;
   }
   const data = await r.json();
-  const role = data.user.role || 'user';
-  status.textContent = `Authenticated as user #${data.user.id} (${role}) with ${data.characters.length} linked character(s).`;
-  if (role === 'admin' || role === 'super_admin') {
-    document.getElementById('adminNav').style.display = 'inline-block';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-  }
+  status.textContent = `Authenticated as ${data.user.handle || ('user #' + data.user.id)} (${data.user.role}).`;
   el.textContent = JSON.stringify(data, null, 2);
+  if (data.user.is_admin) adminNav.classList.remove('hidden'); else adminNav.classList.add('hidden');
 }
-
 async function loadSettings() {
   const r = await fetch('/settings');
   if (r.status === 401) return;
   const data = await r.json();
-  document.getElementById('trackedRegions').value = (data.tracked_regions || []).join(',');
-  document.getElementById('hubSystems').value = JSON.stringify(data.region_hub_systems || {}, null, 2);
   const f = data.dashboard_filters || {};
   document.getElementById('minRoi').value = f.min_roi ?? 0.03;
   document.getElementById('minQty').value = f.min_qty ?? 10;
@@ -236,163 +156,57 @@ async function loadSettings() {
   document.getElementById('minSystemSecurity').value = f.min_system_security ?? 0.0;
   document.getElementById('limit').value = f.limit ?? 50;
 }
-
-async function saveTrackedRegions() {
-  const el = document.getElementById('trackedRegionsResult');
-  const tracked_regions = document.getElementById('trackedRegions').value.split(',').map(x => Number(x.trim())).filter(Boolean);
-  const r = await fetch('/settings/platform', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tracked_regions }) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function saveHubSystems() {
-  const el = document.getElementById('hubSystemsResult');
-  const region_hub_systems = JSON.parse(document.getElementById('hubSystems').value);
-  const r = await fetch('/settings/platform/hubs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ region_hub_systems }) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
 async function saveFilters() {
   const el = document.getElementById('filtersResult');
   const totalM3Available = Number(document.getElementById('totalM3Available').value);
   const payload = {
-    min_roi: Number(document.getElementById('minRoi').value),
-    min_qty: Number(document.getElementById('minQty').value),
-    min_net_profit_isk: Number(document.getElementById('minNetProfit').value),
-    total_m3_available: totalM3Available,
-    max_total_m3: totalM3Available,
-    max_jumps: Number(document.getElementById('maxJumps').value),
-    route_security_mode: document.getElementById('routeSecurityMode').value,
-    min_system_security: Number(document.getElementById('minSystemSecurity').value),
-    limit: Number(document.getElementById('limit').value),
+    min_roi: Number(document.getElementById('minRoi').value), min_qty: Number(document.getElementById('minQty').value), min_net_profit_isk: Number(document.getElementById('minNetProfit').value),
+    total_m3_available: totalM3Available, max_total_m3: totalM3Available, max_jumps: Number(document.getElementById('maxJumps').value), route_security_mode: document.getElementById('routeSecurityMode').value,
+    min_system_security: Number(document.getElementById('minSystemSecurity').value), limit: Number(document.getElementById('limit').value),
   };
   const r = await fetch('/settings/filters', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function runIngest() {
-  const el = document.getElementById('ingestResult');
-  el.textContent = 'Running...';
-  const r = await fetch('/market/ingest', { method: 'POST' });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function runScheduler() {
-  const el = document.getElementById('schedulerResult');
-  el.textContent = 'Running...';
-  const r = await fetch('/scheduler/run', { method: 'POST' });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function loadScheduler() {
-  const el = document.getElementById('schedulerResult');
-  const r = await fetch('/scheduler/status');
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function loadSessions() {
-  const el = document.getElementById('sessionsResult');
-  const r = await fetch('/auth/sessions');
-  if (r.status === 401) { el.textContent = 'Login required'; return; }
   el.textContent = JSON.stringify(await r.json(), null, 2);
 }
 async function analyzeRoute() {
   const from = document.getElementById('routeFromSystem').value;
   const to = document.getElementById('routeToSystem').value;
-  const r = await fetch(`/logistics/route?from_system=${from}&to_system=${to}`);
+  const r = await fetch(`/logistics/route?origin_system_id=${from}&destination_system_id=${to}`);
   document.getElementById('routeResult').textContent = JSON.stringify(await r.json(), null, 2);
 }
 async function loadOpportunities() {
-  const r = await fetch('/market/opportunities?' + qp().toString());
+  const r = await fetch(`/market/opportunities?${qp().toString()}`);
   const data = await r.json();
-  document.getElementById('opportunitiesMeta').textContent = `Rows: ${data.length}`;
-  const tbody = document.querySelector('#oppTable tbody');
-  tbody.innerHTML = '';
-  for (const row of data) {
+  document.getElementById('opportunitiesMeta').textContent = JSON.stringify({ count: data.length }, null, 2);
+  const tbody = document.querySelector('#oppTable tbody'); tbody.innerHTML = '';
+  data.forEach(row => {
     const tr = document.createElement('tr');
-    const fits = row.fits_cargo ? 'Yes' : 'No';
-    tr.innerHTML = `
-      <td>${row.type_id ?? ''}</td>
-      <td>${row.item_name ?? ''}</td>
-      <td>${Number(row.src_best_sell ?? 0).toLocaleString()}</td>
-      <td>${Number(row.dst_best_buy ?? 0).toLocaleString()}</td>
-      <td>${row.buy_location_name ?? ''}</td>
-      <td>${row.sell_location_name ?? ''}</td>
-      <td>${Number(row.profit_per_unit ?? 0).toLocaleString()}</td>
-      <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
-      <td>${Number(row.max_qty_est ?? 0).toLocaleString()}</td>
-      <td>${row.route_jumps ?? ''}</td>
-      <td>${row.route_security_profile ?? ''} / min ${row.min_security_on_path ?? ''}</td>
-      <td>${Number(row.total_m3_necessary ?? row.total_m3 ?? 0).toLocaleString()}</td>
-      <td><span class="pill">${fits}</span></td>
-      <td>${Number(row.net_profit_isk ?? 0).toLocaleString()}</td>
-      <td>${row.profit_per_m3 == null ? '' : Number(row.profit_per_m3).toLocaleString()}</td>
-      <td>${Number(row.isk_per_jump ?? 0).toLocaleString()}</td>
-      <td><button>Save</button></td>
-    `;
-    tr.querySelector('button').onclick = () => saveOpportunity(row);
+    tr.innerHTML = `<td>${row.type_id ?? ''}</td><td>${row.item_name ?? ''}</td><td>${row.buy_price ?? ''}</td><td>${row.sell_price ?? ''}</td><td>${row.buy_location_name ?? ''}</td><td>${row.sell_location_name ?? ''}</td><td>${row.expected_profit_per_unit ?? ''}</td><td>${row.roi ?? ''}</td><td>${row.quantity ?? ''}</td><td>${row.route_jumps ?? ''}</td><td>${row.route_security_profile ?? ''}</td><td>${row.total_m3 ?? ''}</td><td>${row.fits_cargo ? 'Yes' : 'No'}</td><td>${row.expected_net_profit_isk ?? ''}</td><td>${row.profit_per_m3 ?? ''}</td><td>${row.isk_per_jump ?? ''}</td><td><button onclick='saveOpportunity(${JSON.stringify(row)})'>Save</button></td>`;
     tbody.appendChild(tr);
-  }
+  });
 }
 async function saveOpportunity(row) {
-  const r = await fetch('/opportunities/save', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(row)
-  });
-  const data = await r.json();
-  document.getElementById('activeMeta').textContent = JSON.stringify(data, null, 2);
-  await loadActiveOpportunities();
+  const r = await fetch('/opportunities/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(row) });
+  alert(JSON.stringify(await r.json()));
+  loadActiveOpportunities();
 }
 async function loadActiveOpportunities() {
   const r = await fetch('/opportunities/active');
-  if (r.status === 401) { document.getElementById('activeMeta').textContent = 'Login required'; return; }
+  if (r.status === 401) { document.getElementById('activeMeta').textContent = 'Login required.'; return; }
   const data = await r.json();
-  document.getElementById('activeMeta').textContent = `Rows: ${data.length}`;
-  const tbody = document.querySelector('#activeOppTable tbody');
-  tbody.innerHTML = '';
-  for (const row of data) {
+  document.getElementById('activeMeta').textContent = JSON.stringify({ count: data.length }, null, 2);
+  const tbody = document.querySelector('#activeOppTable tbody'); tbody.innerHTML = '';
+  data.forEach(row => {
+    const failOptions = ['','Price moved','Item unavailable','Route unsafe','Insufficient cargo','Other'];
+    const optionsHtml = failOptions.map(x => `<option value="${x}" ${row.fail_reason === x ? 'selected' : ''}>${x || 'None'}</option>`).join('');
     const tr = document.createElement('tr');
-    const completeDisabled = row.status !== 'active' ? 'disabled' : '';
-    const failDisabled = row.status !== 'active' ? 'disabled' : '';
-    tr.innerHTML = `
-      <td>${row.id}</td>
-      <td>${row.item_name ?? ''}</td>
-      <td>${Number(row.buy_price ?? 0).toLocaleString()}</td>
-      <td>${Number(row.sell_price ?? 0).toLocaleString()}</td>
-      <td>${row.buy_location_name ?? ''}</td>
-      <td>${row.sell_location_name ?? ''}</td>
-      <td>${Number(row.expected_net_profit_isk ?? 0).toLocaleString()}</td>
-      <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
-      <td>${Number(row.quantity ?? 0).toLocaleString()}</td>
-      <td><span class="pill">${row.status}</span></td>
-      <td>${row.fail_reason ?? ''}</td>
-      <td>
-        <button ${completeDisabled}>Complete</button>
-        <button ${failDisabled}>Fail</button>
-      </td>
-    `;
-    const buttons = tr.querySelectorAll('button');
-    buttons[0].onclick = () => completeOpportunity(row.id);
-    buttons[1].onclick = () => failOpportunity(row.id);
+    tr.innerHTML = `<td>${row.id}</td><td>${row.item_name ?? ''}</td><td>${row.buy_price ?? ''}</td><td>${row.sell_price ?? ''}</td><td>${row.buy_location_name ?? ''}</td><td>${row.sell_location_name ?? ''}</td><td>${row.expected_net_profit_isk ?? ''}</td><td>${row.roi ?? ''}</td><td>${row.quantity ?? ''}</td><td>${row.status ?? ''}</td><td><select id='fail-${row.id}'>${optionsHtml}</select></td><td><button onclick='completeOpportunity(${row.id})'>Complete</button> <button onclick='failOpportunity(${row.id})'>Fail</button></td>`;
     tbody.appendChild(tr);
-  }
-}
-async function completeOpportunity(id) {
-  const r = await fetch(`/opportunities/${id}/complete`, { method: 'POST' });
-  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
-  await loadActiveOpportunities();
-}
-async function failOpportunity(id) {
-  const fail_reason = prompt('Fail reason (price_changed, order_gone, insufficient_volume, cargo_too_large, route_not_safe, structure_access_denied, competition, insufficient_isk, manual_abort, other):', 'price_changed') || 'other';
-  const r = await fetch(`/opportunities/${id}/fail`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ fail_reason })
   });
-  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
-  await loadActiveOpportunities();
 }
-function downloadCsv() { window.location = '/export/opportunities.csv?' + qp().toString(); }
-
-loadMe();
-loadSettings();
-loadScheduler();
-loadSessions();
-loadActiveOpportunities();
+async function completeOpportunity(id) { await fetch(`/opportunities/${id}/complete`, { method:'POST' }); loadActiveOpportunities(); }
+async function failOpportunity(id) { const fail_reason = document.getElementById(`fail-${id}`).value || null; await fetch(`/opportunities/${id}/fail`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fail_reason }) }); loadActiveOpportunities(); }
+function downloadCsv() { window.location = `/export/opportunities.csv?${qp().toString()}`; }
+loadMe(); loadSettings(); loadActiveOpportunities();
 </script>
 </body>
 </html>
