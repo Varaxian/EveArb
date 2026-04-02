@@ -109,7 +109,7 @@ class TypeMetadata(Base):
 class LocationNameCache(Base):
     __tablename__ = "location_name_cache"
 
-    location_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    location_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     location_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     location_kind: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
