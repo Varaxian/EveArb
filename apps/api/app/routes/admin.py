@@ -8,15 +8,16 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import JobRun, User, UserRole, UserSession
-from app.services.auth_service import get_user_role, require_admin, require_super_admin, set_user_role
-from app.services.job_service import latest_job_by_status
-from app.services.scheduler_service import restart_scheduler, run_ingest_cycle, scheduler_state
+from app.services.auth_service import get_current_user_role, require_admin, require_super_admin
+from app.services.job_service import finish_job, latest_job_by_status, start_job
+from app.services.market_service import ingest_regions
+from app.services.scheduler_service import run_ingest_cycle, scheduler_state
+from app.services.settings_service import get_platform_tracked_regions
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-class UserRolePayload(BaseModel):
+class RoleUpdatePayload(BaseModel):
     role: str
-
 
 def _pack_job(row):
     if not row:
@@ -30,68 +31,87 @@ def _pack_job(row):
         "details": json.loads(row.details_json) if row.details_json else None,
     }
 
-@router.post('/ingest/run')
-async def admin_run_ingest(current_user: User = Depends(require_admin)):
-    return await run_ingest_cycle()
+@router.get("")
+def admin_index(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return {"ok": True, "user_id": current_user.id, "role": get_current_user_role(db, current_user.id)}
 
-@router.get('/scheduler/status')
+@router.get("/users")
+def admin_users(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    roles = {r.user_id: r.role for r in db.query(UserRole).all()}
+    users = db.query(User).order_by(User.id.asc()).all()
+    return [
+        {
+            "id": u.id,
+            "handle": u.handle,
+            "is_active": u.is_active,
+            "role": ("super_admin" if (u.handle or "") == "Varaxian" else roles.get(u.id, "user")),
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
+
+@router.post("/users/{user_id}/role")
+def admin_set_role(user_id: int, payload: RoleUpdatePayload, current_user: User = Depends(require_super_admin), db: Session = Depends(get_db)):
+    role = (payload.role or "").strip().lower()
+    if role not in {"user", "admin", "super_admin"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if (user.handle or "") == "Varaxian":
+        role = "super_admin"
+    row = db.query(UserRole).filter(UserRole.user_id == user_id).first()
+    if row is None:
+        row = UserRole(user_id=user_id, role=role)
+        db.add(row)
+    else:
+        row.role = role
+    db.commit()
+    db.refresh(row)
+    return {"user_id": user_id, "role": row.role}
+
+@router.get("/sessions")
+def admin_sessions(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.query(UserSession).order_by(UserSession.last_seen_at.desc()).limit(100).all()
+    users = {u.id: u for u in db.query(User).filter(User.id.in_([r.user_id for r in rows])).all()} if rows else {}
+    return [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "handle": users.get(r.user_id).handle if users.get(r.user_id) else None,
+            "is_active": r.is_active,
+            "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+            "last_seen_at": r.last_seen_at.isoformat() if r.last_seen_at else None,
+        }
+        for r in rows
+    ]
+
+@router.get("/scheduler/status")
 def admin_scheduler_status(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     latest = db.query(JobRun).order_by(JobRun.started_at.desc()).first()
-    latest_success = latest_job_by_status(db, 'market_ingest', 'success')
-    latest_failed = latest_job_by_status(db, 'market_ingest', 'failed')
+    latest_success = latest_job_by_status(db, "market_ingest", "success")
+    latest_failed = latest_job_by_status(db, "market_ingest", "failed")
     return {
-        'scheduler': scheduler_state(),
-        'latest_job': _pack_job(latest),
-        'latest_successful_market_ingest': _pack_job(latest_success),
-        'latest_failed_market_ingest': _pack_job(latest_failed),
+        "scheduler": scheduler_state(),
+        "latest_job": _pack_job(latest),
+        "latest_successful_market_ingest": _pack_job(latest_success),
+        "latest_failed_market_ingest": _pack_job(latest_failed),
     }
 
-@router.post('/scheduler/restart')
-async def admin_scheduler_restart(current_user: User = Depends(require_admin)):
-    return {
-        'status': 'restarted',
-        'scheduler': await restart_scheduler(),
-    }
+@router.post("/scheduler/run")
+async def admin_scheduler_run(current_user: User = Depends(require_admin)):
+    return await run_ingest_cycle()
 
-@router.get('/sessions')
-def admin_sessions(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    rows = db.query(UserSession).order_by(UserSession.last_seen_at.desc()).limit(250).all()
-    return [
-        {
-            'id': row.id,
-            'user_id': row.user_id,
-            'expires_at': row.expires_at.isoformat() if row.expires_at else None,
-            'last_seen_at': row.last_seen_at.isoformat() if row.last_seen_at else None,
-            'is_active': row.is_active,
-        }
-        for row in rows
-    ]
-
-@router.get('/users')
-def admin_users(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    users = db.query(User).order_by(User.id.asc()).all()
-    role_map = {row.user_id: row.role for row in db.query(UserRole).all()}
-    return [
-        {
-            'id': user.id,
-            'handle': user.handle,
-            'is_active': user.is_active,
-            'role': role_map.get(user.id, 'user'),
-            'created_at': user.created_at.isoformat() if user.created_at else None,
-            'updated_at': user.updated_at.isoformat() if user.updated_at else None,
-        }
-        for user in users
-    ]
-
-@router.post('/users/{user_id}/role')
-def admin_set_user_role(user_id: int, payload: UserRolePayload, current_user: User = Depends(require_super_admin), db: Session = Depends(get_db)):
-    target_user = db.query(User).filter(User.id == user_id).first()
-    if target_user is None:
-        raise HTTPException(status_code=404, detail='User not found')
-    role_row = set_user_role(db, actor_user=current_user, target_user=target_user, role=payload.role)
-    return {
-        'status': 'updated',
-        'user_id': target_user.id,
-        'handle': target_user.handle,
-        'role': role_row.role,
-    }
+@router.post("/ingest/run")
+async def admin_ingest_run(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    target_regions = get_platform_tracked_regions(db)
+    if not target_regions:
+        raise HTTPException(status_code=400, detail="No tracked regions configured")
+    job = start_job(db, "admin_manual_market_ingest", {"region_ids": target_regions})
+    try:
+        result = await ingest_regions(db, target_regions)
+        finish_job(db, job.id, "success", result)
+        return result
+    except Exception as exc:
+        finish_job(db, job.id, "failed", {"error": repr(exc)})
+        raise

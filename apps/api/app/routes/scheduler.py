@@ -9,12 +9,11 @@ from app.db.database import get_db
 from app.db.models import JobRun
 from app.services.job_service import latest_job_by_status
 from app.services.scheduler_service import run_ingest_cycle, scheduler_state
-from app.services.auth_service import require_admin
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 
 @router.get("/status")
-def scheduler_status(current_user = Depends(require_admin), db: Session = Depends(get_db)):
+def scheduler_status(db: Session = Depends(get_db)):
     latest = db.query(JobRun).order_by(JobRun.started_at.desc()).first()
     latest_success = latest_job_by_status(db, "market_ingest", "success")
     latest_failed = latest_job_by_status(db, "market_ingest", "failed")
@@ -39,5 +38,5 @@ def scheduler_status(current_user = Depends(require_admin), db: Session = Depend
     }
 
 @router.post("/run")
-async def scheduler_run_now(current_user = Depends(require_admin)):
+async def scheduler_run_now():
     return await run_ingest_cycle()

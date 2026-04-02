@@ -7,18 +7,18 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["ui"])
 
-def _read(name: str) -> str:
-    html = Path(__file__).resolve().parents[1] / "ui" / name
+def _dashboard_html() -> str:
+    html = Path(__file__).resolve().parents[1] / "ui" / "dashboard.html"
     return html.read_text(encoding="utf-8")
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
-    return _read("dashboard.html")
+    return _dashboard_html()
 
 @router.get("/active-opportunities", response_class=HTMLResponse)
-def active_opportunities_page():
-    return _read("active_opportunities.html")
+def active_opportunities():
+    return _dashboard_html()
 
 @router.get("/admin", response_class=HTMLResponse)
 def admin_page():
-    return _read("admin.html")
+    return _dashboard_html()
