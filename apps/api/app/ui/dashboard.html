@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html>
 <head>
@@ -6,6 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #111827; color: #e5e7eb; }
+    .header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .nav { display:flex; gap:10px; flex-wrap:wrap; margin: 12px 0 20px; }
+    .nav a { padding:8px 12px; border-radius:8px; background:#1f2937; text-decoration:none; color:#e5e7eb; }
     .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
     .card { background: #1f2937; border-radius: 10px; padding: 16px; min-width: 280px; flex: 1; }
     input, button, textarea, select { padding: 8px; margin: 4px 0; border-radius: 6px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; width: 100%; box-sizing: border-box; }
@@ -17,13 +21,18 @@
     .inline { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .inline > div { min-width: 120px; flex: 1; }
     .status { padding: 10px; border-radius: 8px; background: #0f172a; margin-bottom: 16px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#0f172a; border:1px solid #374151; }
   </style>
 </head>
 <body>
-  <h1>EVE Arb v2.20.06 Dashboard</h1>
-
-  <div class="status" id="authStatus">Checking authentication...</div>
+  <div class="header">
+    <h1>EVE Arb Dashboard</h1>
+    <div id="authStatus" class="status">Checking authentication...</div>
+  </div>
+  <div class="nav">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/active-opportunities">Active Opportunities</a>
+    <a id="adminNav" href="/administrator-settings" style="display:none">Administrator Settings</a>
+  </div>
 
   <div class="row">
     <div class="card">
@@ -33,47 +42,14 @@
       <button onclick="refreshToken()">Refresh token</button>
       <div id="meResult" class="mono"></div>
     </div>
-    <div class="card">
-      <h3>Manual ingest</h3>
-      <button onclick="runIngest()">Run ingest now</button>
-      <div id="ingestResult" class="mono"></div>
-    </div>
-    <div class="card">
-      <h3>Scheduler</h3>
-      <button onclick="loadScheduler()">Refresh scheduler status</button>
-      <button onclick="runScheduler()">Run scheduler cycle now</button>
-      <div id="schedulerResult" class="mono"></div>
-    </div>
-    <div class="card">
-      <h3>Auth sessions</h3>
-      <button onclick="loadSessions()">Refresh sessions</button>
-      <div id="sessionsResult" class="mono"></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="card">
-      <h3>Platform tracked regions</h3>
-      <label>Comma-separated region IDs</label>
-      <input id="trackedRegions" value="10000002,10000043">
-      <button onclick="saveTrackedRegions()">Save tracked regions</button>
-      <div id="trackedRegionsResult" class="mono"></div>
-    </div>
-    <div class="card">
-      <h3>Platform hub systems</h3>
-      <label>JSON mapping of region → hub system</label>
-      <textarea id="hubSystems" rows="6">{}</textarea>
-      <button onclick="saveHubSystems()">Save hub systems</button>
-      <div id="hubSystemsResult" class="mono"></div>
-    </div>
   </div>
 
   <div class="row">
     <div class="card">
       <h3>Your dashboard filters</h3>
       <div class="inline">
-        <div><label>Source Region</label><select id="srcRegion" data-default-value="10000002"></select></div>
-        <div><label>Destination Region</label><select id="dstRegion" data-default-value="10000043"></select></div>
+        <div><label>Source Region</label><select id="srcRegion"></select></div>
+        <div><label>Destination Region</label><select id="dstRegion"></select></div>
         <div><label>Minimum ROI</label><input id="minRoi" value="0.03"></div>
         <div><label>Minimum Qty</label><input id="minQty" value="10"></div>
         <div><label>Min Net Profit</label><input id="minNetProfit" value="0"></div>
@@ -91,7 +67,6 @@
         <div><label>Min System Security</label><input id="minSystemSecurity" value="0.0"></div>
         <div><label>Limit</label><input id="limit" value="50"></div>
       </div>
-      <div class="mono">v2.14 uses Total m3 Available as your default cargo-cap filter and shows Total m3 Necessary on each result.</div>
       <button onclick="saveFilters()">Save my filters</button>
       <button onclick="loadOpportunities()">Load opportunities</button>
       <button onclick="downloadCsv()">Download CSV</button>
@@ -115,318 +90,30 @@
     <table id="oppTable">
       <thead>
         <tr>
-          <th>Type</th>
-          <th>Name</th>
-          <th>Sell</th>
-          <th>Buy</th>
-          <th>Buy Location</th>
-          <th>Sell Location</th>
-          <th>Profit/Unit</th>
-          <th>ROI</th>
-          <th>Qty</th>
-          <th>Jumps</th>
-          <th>Route</th>
-          <th>Total m3 Necessary</th>
-          <th>Fits Cargo</th>
-          <th>Net Profit</th>
-          <th>Profit/m3</th>
-          <th>ISK/Jump</th>
-          <th>Action</th>
+          <th>Type</th><th>Name</th><th>Buy</th><th>Sell</th><th>Buy Location</th><th>Sell Location</th><th>Profit/Unit</th><th>ROI</th><th>Qty</th><th>Jumps</th><th>Route Systems</th><th>Total m3 Necessary</th><th>Fits Cargo</th><th>Net Profit</th><th>Profit/m3</th><th>Action</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
-
-  <div class="card">
-    <h3>Active Opportunities</h3>
-    <button onclick="loadActiveOpportunities()">Refresh active opportunities</button>
-    <div id="activeMeta" class="mono"></div>
-    <table id="activeOppTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Buy</th>
-          <th>Sell</th>
-          <th>Buy Location</th>
-          <th>Sell Location</th>
-          <th>Expected Profit</th>
-          <th>ROI</th>
-          <th>Qty</th>
-          <th>Status</th>
-          <th>Fail Reason</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
 <script>
-function currentFilters() {
-  const totalM3Available = document.getElementById('totalM3Available').value;
-  return {
-    src_region_id: document.getElementById('srcRegion').value,
-    dst_region_id: document.getElementById('dstRegion').value,
-    min_roi: document.getElementById('minRoi').value,
-    min_qty: document.getElementById('minQty').value,
-    min_net_profit_isk: document.getElementById('minNetProfit').value,
-    total_m3_available: totalM3Available,
-    max_total_m3: totalM3Available,
-    max_jumps: document.getElementById('maxJumps').value,
-    route_security_mode: document.getElementById('routeSecurityMode').value,
-    min_system_security: document.getElementById('minSystemSecurity').value,
-    limit: document.getElementById('limit').value
-  };
-}
-function qp() {
-  return new URLSearchParams(currentFilters());
-}
-function selectedRegionName(id) {
-  const el = document.getElementById(id);
-  if (!el) return '';
-  const option = el.options[el.selectedIndex];
-  return option ? option.textContent : '';
-}
-async function loadRegionOptions(selectedSrc = null, selectedDst = null) {
-  const r = await fetch('/app/region-options');
-  if (!r.ok) return;
-  const data = await r.json();
-  const src = document.getElementById('srcRegion');
-  const dst = document.getElementById('dstRegion');
-  src.innerHTML = '';
-  dst.innerHTML = '';
-  for (const row of data) {
-    const label = row.region_name || String(row.region_id);
-    const srcOpt = document.createElement('option');
-    srcOpt.value = row.region_id;
-    srcOpt.textContent = label;
-    const dstOpt = document.createElement('option');
-    dstOpt.value = row.region_id;
-    dstOpt.textContent = label;
-    src.appendChild(srcOpt);
-    dst.appendChild(dstOpt);
-  }
-  if (selectedSrc != null) src.value = String(selectedSrc);
-  if (selectedDst != null) dst.value = String(selectedDst);
-  if (!src.value && src.options.length) src.selectedIndex = 0;
-  if (!dst.value && dst.options.length > 1) dst.selectedIndex = 1;
-}
-function login() { window.location = '/auth/login?next_path=/dashboard'; }
-async function logout() { await fetch('/auth/logout', { method: 'POST' }); window.location = '/dashboard'; }
-
-async function refreshToken() {
-  const el = document.getElementById('meResult');
-  const r = await fetch('/auth/refresh', { method: 'POST' });
-  const data = await r.json();
-  el.textContent = JSON.stringify(data, null, 2);
-  await loadMe();
-}
-
-async function loadMe() {
-  const status = document.getElementById('authStatus');
-  const el = document.getElementById('meResult');
-  const r = await fetch('/app/me');
-  if (r.status === 401) {
-    status.textContent = 'Not authenticated. Connect your EVE character to unlock per-user settings and token refresh.';
-    el.textContent = '';
-    return;
-  }
-  const data = await r.json();
-  status.textContent = `Authenticated as user #${data.user.id} with ${data.characters.length} linked character(s).`;
-  el.textContent = JSON.stringify(data, null, 2);
-}
-
-async function loadSettings() {
-  const defaultSrc = document.getElementById('srcRegion').dataset.defaultValue || '10000002';
-  const defaultDst = document.getElementById('dstRegion').dataset.defaultValue || '10000043';
-  const r = await fetch('/settings');
-  if (r.status === 401) {
-    await loadRegionOptions(defaultSrc, defaultDst);
-    return;
-  }
-  const data = await r.json();
-  document.getElementById('trackedRegions').value = (data.tracked_regions || []).join(',');
-  document.getElementById('hubSystems').value = JSON.stringify(data.region_hub_systems || {}, null, 2);
-  const tracked = data.tracked_regions || [];
-  await loadRegionOptions(tracked[0] ?? defaultSrc, tracked[1] ?? defaultDst);
-  const f = data.dashboard_filters || {};
-  document.getElementById('minRoi').value = f.min_roi ?? 0.03;
-  document.getElementById('minQty').value = f.min_qty ?? 10;
-  document.getElementById('minNetProfit').value = f.min_net_profit_isk ?? 0;
-  document.getElementById('totalM3Available').value = f.total_m3_available ?? f.max_total_m3 ?? 0;
-  document.getElementById('maxJumps').value = f.max_jumps ?? 0;
-  document.getElementById('routeSecurityMode').value = f.route_security_mode ?? 'any';
-  document.getElementById('minSystemSecurity').value = f.min_system_security ?? 0.0;
-  document.getElementById('limit').value = f.limit ?? 50;
-}
-
-async function saveTrackedRegions() {
-  const el = document.getElementById('trackedRegionsResult');
-  const tracked_regions = document.getElementById('trackedRegions').value.split(',').map(x => Number(x.trim())).filter(Boolean);
-  const r = await fetch('/settings/platform', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tracked_regions }) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function saveHubSystems() {
-  const el = document.getElementById('hubSystemsResult');
-  const region_hub_systems = JSON.parse(document.getElementById('hubSystems').value);
-  const r = await fetch('/settings/platform/hubs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ region_hub_systems }) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function saveFilters() {
-  const el = document.getElementById('filtersResult');
-  const totalM3Available = Number(document.getElementById('totalM3Available').value);
-  const payload = {
-    min_roi: Number(document.getElementById('minRoi').value),
-    min_qty: Number(document.getElementById('minQty').value),
-    min_net_profit_isk: Number(document.getElementById('minNetProfit').value),
-    total_m3_available: totalM3Available,
-    max_total_m3: totalM3Available,
-    max_jumps: Number(document.getElementById('maxJumps').value),
-    route_security_mode: document.getElementById('routeSecurityMode').value,
-    min_system_security: Number(document.getElementById('minSystemSecurity').value),
-    limit: Number(document.getElementById('limit').value),
-  };
-  const r = await fetch('/settings/filters', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function runIngest() {
-  const el = document.getElementById('ingestResult');
-  el.textContent = 'Running...';
-  const r = await fetch('/market/ingest', { method: 'POST' });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function runScheduler() {
-  const el = document.getElementById('schedulerResult');
-  el.textContent = 'Running...';
-  const r = await fetch('/scheduler/run', { method: 'POST' });
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function loadScheduler() {
-  const el = document.getElementById('schedulerResult');
-  const r = await fetch('/scheduler/status');
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function loadSessions() {
-  const el = document.getElementById('sessionsResult');
-  const r = await fetch('/auth/sessions');
-  if (r.status === 401) { el.textContent = 'Login required'; return; }
-  el.textContent = JSON.stringify(await r.json(), null, 2);
-}
-async function analyzeRoute() {
-  const from = document.getElementById('routeFromSystem').value;
-  const to = document.getElementById('routeToSystem').value;
-  const r = await fetch(`/logistics/route?from_system=${from}&to_system=${to}`);
-  const data = await r.json();
-  const path = (data.systems || []).map((row, idx) => `${idx + 1}. ${row.name || row.system_id} (${Number(row.security_status ?? 0).toFixed(1)})`).join('\n');
-  document.getElementById('routeResult').textContent = [
-    `Jumps: ${data.route_jumps ?? 0}`,
-    `Security Profile: ${data.security_profile ?? ''}`,
-    `Minimum Security: ${data.min_security_on_path ?? ''}`,
-    '',
-    'Route Systems:',
-    path || '(no route systems returned)'
-  ].join('\n');
-}
-async function loadOpportunities() {
-  const r = await fetch('/market/opportunities?' + qp().toString());
-  const data = await r.json();
-  document.getElementById('opportunitiesMeta').textContent = `Rows: ${data.length} | ${selectedRegionName('srcRegion')} → ${selectedRegionName('dstRegion')}`;
-  const tbody = document.querySelector('#oppTable tbody');
-  tbody.innerHTML = '';
-  for (const row of data) {
-    const tr = document.createElement('tr');
-    const fits = row.fits_cargo ? 'Yes' : 'No';
-    tr.innerHTML = `
-      <td>${row.type_id ?? ''}</td>
-      <td>${row.item_name ?? ''}</td>
-      <td>${Number(row.src_best_sell ?? 0).toLocaleString()}</td>
-      <td>${Number(row.dst_best_buy ?? 0).toLocaleString()}</td>
-      <td>${row.buy_location_name ?? ''}</td>
-      <td>${row.sell_location_name ?? ''}</td>
-      <td>${Number(row.profit_per_unit ?? 0).toLocaleString()}</td>
-      <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
-      <td>${Number(row.max_qty_est ?? 0).toLocaleString()}</td>
-      <td>${row.route_jumps ?? ''}</td>
-      <td>${(row.route_system_names || []).length ? row.route_system_names.join(' → ') : ((row.route_security_profile ?? '') + ' / min ' + (row.min_security_on_path ?? ''))}</td>
-      <td>${Number(row.total_m3_necessary ?? row.total_m3 ?? 0).toLocaleString()}</td>
-      <td><span class="pill">${fits}</span></td>
-      <td>${Number(row.net_profit_isk ?? 0).toLocaleString()}</td>
-      <td>${row.profit_per_m3 == null ? '' : Number(row.profit_per_m3).toLocaleString()}</td>
-      <td>${Number(row.isk_per_jump ?? 0).toLocaleString()}</td>
-      <td><button>Save</button></td>
-    `;
-    tr.querySelector('button').onclick = () => saveOpportunity(row);
-    tbody.appendChild(tr);
-  }
-}
-async function saveOpportunity(row) {
-  const r = await fetch('/opportunities/save', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(row)
-  });
-  const data = await r.json();
-  document.getElementById('activeMeta').textContent = JSON.stringify(data, null, 2);
-  await loadActiveOpportunities();
-}
-async function loadActiveOpportunities() {
-  const r = await fetch('/opportunities/active');
-  if (r.status === 401) { document.getElementById('activeMeta').textContent = 'Login required'; return; }
-  const data = await r.json();
-  document.getElementById('activeMeta').textContent = `Rows: ${data.length}`;
-  const tbody = document.querySelector('#activeOppTable tbody');
-  tbody.innerHTML = '';
-  for (const row of data) {
-    const tr = document.createElement('tr');
-    const completeDisabled = row.status !== 'active' ? 'disabled' : '';
-    const failDisabled = row.status !== 'active' ? 'disabled' : '';
-    tr.innerHTML = `
-      <td>${row.id}</td>
-      <td>${row.item_name ?? ''}</td>
-      <td>${Number(row.buy_price ?? 0).toLocaleString()}</td>
-      <td>${Number(row.sell_price ?? 0).toLocaleString()}</td>
-      <td>${row.buy_location_name ?? ''}</td>
-      <td>${row.sell_location_name ?? ''}</td>
-      <td>${Number(row.expected_net_profit_isk ?? 0).toLocaleString()}</td>
-      <td>${((row.roi ?? 0) * 100).toFixed(2)}%</td>
-      <td>${Number(row.quantity ?? 0).toLocaleString()}</td>
-      <td><span class="pill">${row.status}</span></td>
-      <td>${row.fail_reason ?? ''}</td>
-      <td>
-        <button ${completeDisabled}>Complete</button>
-        <button ${failDisabled}>Fail</button>
-      </td>
-    `;
-    const buttons = tr.querySelectorAll('button');
-    buttons[0].onclick = () => completeOpportunity(row.id);
-    buttons[1].onclick = () => failOpportunity(row.id);
-    tbody.appendChild(tr);
-  }
-}
-async function completeOpportunity(id) {
-  const r = await fetch(`/opportunities/${id}/complete`, { method: 'POST' });
-  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
-  await loadActiveOpportunities();
-}
-async function failOpportunity(id) {
-  const fail_reason = prompt('Fail reason (price_changed, order_gone, insufficient_volume, cargo_too_large, route_not_safe, structure_access_denied, competition, insufficient_isk, manual_abort, other):', 'price_changed') || 'other';
-  const r = await fetch(`/opportunities/${id}/fail`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ fail_reason })
-  });
-  document.getElementById('activeMeta').textContent = JSON.stringify(await r.json(), null, 2);
-  await loadActiveOpportunities();
-}
-function downloadCsv() { window.location = '/export/opportunities.csv?' + qp().toString(); }
-
-loadMe();
-loadSettings();
-loadScheduler();
-loadSessions();
-loadActiveOpportunities();
+let me = null;
+let regionOptions = [];
+function currentFilters(){return {src_region_id: document.getElementById('srcRegion').value, dst_region_id: document.getElementById('dstRegion').value, min_roi: document.getElementById('minRoi').value, min_qty: document.getElementById('minQty').value, min_net_profit_isk: document.getElementById('minNetProfit').value, total_m3_available: document.getElementById('totalM3Available').value, max_total_m3: document.getElementById('totalM3Available').value, max_jumps: document.getElementById('maxJumps').value, route_security_mode: document.getElementById('routeSecurityMode').value, min_system_security: document.getElementById('minSystemSecurity').value, limit: document.getElementById('limit').value};}
+function qp(){return new URLSearchParams(currentFilters());}
+function login(){window.location='/auth/login?next_path=/dashboard';}
+async function logout(){await fetch('/auth/logout',{method:'POST'}); window.location='/dashboard';}
+async function refreshToken(){const r=await fetch('/auth/refresh',{method:'POST'}); const data=await r.json(); document.getElementById('meResult').textContent=JSON.stringify(data,null,2); await loadMe();}
+async function loadMe(){const r=await fetch('/app/me'); const status=document.getElementById('authStatus'); if(r.status===401){status.textContent='Not authenticated.'; document.getElementById('adminNav').style.display='none'; return;} me=await r.json(); status.textContent=`Authenticated as ${me.user.handle || ('user #'+me.user.id)} (${me.user.role})`; document.getElementById('meResult').textContent=JSON.stringify(me,null,2); document.getElementById('adminNav').style.display=(me.user.role==='admin'||me.user.role==='super_admin')?'inline-block':'none';}
+async function loadRegionOptions(){const r=await fetch('/settings/region-options'); if(r.status!==200) return; regionOptions=await r.json(); const src=document.getElementById('srcRegion'); const dst=document.getElementById('dstRegion'); src.innerHTML=''; dst.innerHTML=''; for(const opt of regionOptions){src.add(new Option(opt.name, opt.id)); dst.add(new Option(opt.name, opt.id));}}
+async function loadSettings(){const r=await fetch('/settings'); if(r.status!==200) return; const data=await r.json(); const f=data.dashboard_filters||{}; if(!regionOptions.length) await loadRegionOptions(); if(data.tracked_regions?.length){document.getElementById('srcRegion').value=String(data.tracked_regions[0]); document.getElementById('dstRegion').value=String(data.tracked_regions[Math.min(1,data.tracked_regions.length-1)]);}
+ if(f.min_roi!=null) document.getElementById('minRoi').value=f.min_roi; if(f.min_qty!=null) document.getElementById('minQty').value=f.min_qty; document.getElementById('minNetProfit').value=f.min_net_profit_isk ?? 0; document.getElementById('totalM3Available').value=f.total_m3_available ?? f.max_total_m3 ?? 0; document.getElementById('maxJumps').value=f.max_jumps ?? 0; document.getElementById('routeSecurityMode').value=f.route_security_mode ?? 'any'; document.getElementById('minSystemSecurity').value=f.min_system_security ?? 0; document.getElementById('limit').value=f.limit ?? 50;}
+async function saveFilters(){const payload={min_roi:Number(document.getElementById('minRoi').value),min_qty:Number(document.getElementById('minQty').value),min_net_profit_isk:Number(document.getElementById('minNetProfit').value),total_m3_available:Number(document.getElementById('totalM3Available').value),max_total_m3:Number(document.getElementById('totalM3Available').value),max_jumps:Number(document.getElementById('maxJumps').value),route_security_mode:document.getElementById('routeSecurityMode').value,min_system_security:Number(document.getElementById('minSystemSecurity').value),limit:Number(document.getElementById('limit').value)}; const r=await fetch('/settings/filters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); document.getElementById('filtersResult').textContent=JSON.stringify(await r.json(),null,2);}
+async function analyzeRoute(){const from_system=document.getElementById('routeFromSystem').value; const to_system=document.getElementById('routeToSystem').value; const r=await fetch(`/logistics/route?from_system=${from_system}&to_system=${to_system}`); const data=await r.json(); const names=(data.systems||[]).map(x=>`${x.name || x.system_id} (${Number(x.security_status).toFixed(1)})`).join(' → '); document.getElementById('routeResult').textContent=JSON.stringify({...data, route_path:names}, null, 2);}
+async function loadOpportunities(){const r=await fetch(`/market/opportunities?${qp().toString()}`); const data=await r.json(); document.getElementById('opportunitiesMeta').textContent=`Loaded ${data.length} rows`; const tbody=document.querySelector('#oppTable tbody'); tbody.innerHTML=''; for(const row of data){const tr=document.createElement('tr'); const routeSystems=(row.route_system_names||[]).join(' → '); tr.innerHTML=`<td>${row.type_id}</td><td>${row.item_name||''}</td><td>${row.buy_price?.toFixed?.(2) ?? row.buy_price}</td><td>${row.sell_price?.toFixed?.(2) ?? row.sell_price}</td><td>${row.buy_location_name||''}</td><td>${row.sell_location_name||''}</td><td>${row.profit_per_unit?.toFixed?.(2) ?? row.profit_per_unit}</td><td>${((row.roi||0)*100).toFixed(2)}%</td><td>${row.max_qty_est}</td><td>${row.route_jumps ?? ''}</td><td>${routeSystems}</td><td>${row.total_m3_necessary ?? ''}</td><td>${row.fits_cargo ? 'Yes':'No'}</td><td>${row.net_profit_isk?.toFixed?.(2) ?? row.net_profit_isk}</td><td>${row.profit_per_m3?.toFixed?.(2) ?? ''}</td><td><button data-row='${JSON.stringify(row).replace(/'/g,"&#39;")}'>Save</button></td>`; tr.querySelector('button').onclick=()=>saveOpportunity(row); tbody.appendChild(tr);} }
+async function saveOpportunity(row){const r=await fetch('/opportunities/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(row)}); alert((await r.json()).status || 'saved');}
+function downloadCsv(){window.location=`/export/opportunities.csv?${qp().toString()}`;}
+(async function(){await loadMe(); await loadRegionOptions(); await loadSettings();})();
 </script>
 </body>
 </html>

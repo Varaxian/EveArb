@@ -11,7 +11,7 @@ from app.services.job_service import finish_job, start_job
 from app.services.market_service import ingest_regions
 from app.services.opportunity_service import compute_opportunities
 from app.services.settings_service import get_platform_region_hub_systems, get_platform_tracked_regions
-from app.services.auth_service import get_current_user_optional
+from app.services.auth_service import get_current_user_optional, require_admin
 
 ALLOWED_ROUTE_SECURITY_MODES = {
     "any",
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/market", tags=["market"])
 
 
 @router.post("/ingest")
-async def ingest_market(region_ids: str | None = Query(default=None), db: Session = Depends(get_db)):
+async def ingest_market(region_ids: str | None = Query(default=None), db: Session = Depends(get_db), current_user = Depends(require_admin)):
     target_regions = get_platform_tracked_regions(db)
     if region_ids:
         target_regions = [int(x.strip()) for x in region_ids.split(",") if x.strip()]

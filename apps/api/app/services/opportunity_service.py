@@ -183,7 +183,7 @@ async def compute_opportunities(
             "max_qty_est": qmax,
             "route_jumps": route_info["route_jumps"],
             "route_system_ids": route_info["route_system_ids"],
-            "route_system_names": [system.get("name") or str(system.get("system_id")) for system in route_info.get("systems", [])],
+            "route_system_names": [row.get("name") or str(row.get("system_id")) for row in route_info["systems"]],
             "route_security_profile": route_info["security_profile"],
             "min_security_on_path": route_info["min_security_on_path"],
             "max_security_on_path": route_info["max_security_on_path"],

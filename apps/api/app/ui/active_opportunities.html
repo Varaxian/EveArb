@@ -1,0 +1,18 @@
+
+<!doctype html><html><head><meta charset="utf-8"><title>Active Opportunities</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+body { font-family: Arial, sans-serif; margin: 20px; background: #111827; color: #e5e7eb; }
+.nav { display:flex; gap:10px; flex-wrap:wrap; margin: 12px 0 20px; }
+.nav a { padding:8px 12px; border-radius:8px; background:#1f2937; text-decoration:none; color:#e5e7eb; }
+.card { background: #1f2937; border-radius: 10px; padding: 16px; }
+table { width:100%; border-collapse: collapse; margin-top: 12px; } th, td { border-bottom:1px solid #374151; padding:8px; text-align:left; font-size:14px; } button, select { padding:8px; border-radius:6px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; }
+</style></head><body>
+<h1>Active Opportunities</h1>
+<div class="nav"><a href="/dashboard">Dashboard</a><a href="/active-opportunities">Active Opportunities</a><a id="adminNav" href="/administrator-settings" style="display:none">Administrator Settings</a></div>
+<div class="card"><button onclick="loadActive()">Refresh</button><table id="tbl"><thead><tr><th>ID</th><th>Name</th><th>Buy</th><th>Sell</th><th>Buy Location</th><th>Sell Location</th><th>Expected Profit</th><th>ROI</th><th>Qty</th><th>Status</th><th>Fail Reason</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+<script>
+async function loadMe(){const r=await fetch('/app/me'); if(r.status!==200) return; const me=await r.json(); document.getElementById('adminNav').style.display=(me.user.role==='admin'||me.user.role==='super_admin')?'inline-block':'none';}
+async function loadActive(){const r=await fetch('/opportunities/active'); const data=await r.json(); const tbody=document.querySelector('#tbl tbody'); tbody.innerHTML=''; for(const row of data){const tr=document.createElement('tr'); tr.innerHTML=`<td>${row.id}</td><td>${row.item_name||''}</td><td>${row.buy_price}</td><td>${row.sell_price}</td><td>${row.buy_location_name||''}</td><td>${row.sell_location_name||''}</td><td>${row.expected_net_profit_isk}</td><td>${((row.roi||0)*100).toFixed(2)}%</td><td>${row.quantity}</td><td>${row.status}</td><td><select><option value="Outbid">Outbid</option><option value="Price Moved">Price Moved</option><option value="No Access">No Access</option><option value="Cargo Limit">Cargo Limit</option><option value="Other">Other</option></select></td><td><button class="complete">Complete</button> <button class="fail">Fail</button></td>`; tr.querySelector('.complete').onclick=()=>completeOpp(row.id); tr.querySelector('.fail').onclick=()=>failOpp(row.id, tr.querySelector('select').value); tbody.appendChild(tr);} }
+async function completeOpp(id){await fetch(`/opportunities/${id}/complete`,{method:'POST'}); await loadActive();}
+async function failOpp(id, reason){await fetch(`/opportunities/${id}/fail`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fail_reason:reason})}); await loadActive();}
+(async function(){await loadMe(); await loadActive();})();
+</script></body></html>

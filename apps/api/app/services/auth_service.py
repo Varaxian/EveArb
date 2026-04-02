@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.database import get_db
-from app.db.models import EveAuthToken, EveCharacter, User, UserSession
+from app.db.models import AdminAuditLog, EveAuthToken, EveCharacter, User, UserRole, UserSession
 
 AUTH_BASE = "https://login.eveonline.com/v2/oauth/authorize"
 TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
@@ -231,3 +231,58 @@ def latest_characters_for_user(db: Session, user_id: int) -> list[EveCharacter]:
         .order_by(EveCharacter.updated_at.desc())
         .all()
     )
+
+
+
+def get_user_role(db: Session, user: User) -> str:
+    if (user.handle or "") == "Varaxian":
+        row = db.query(UserRole).filter(UserRole.user_id == user.id).first()
+        if row is None:
+            row = UserRole(user_id=user.id, role="super_admin")
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+        elif row.role != "super_admin":
+            row.role = "super_admin"
+            db.commit()
+        return "super_admin"
+
+    row = db.query(UserRole).filter(UserRole.user_id == user.id).first()
+    if row is None:
+        row = UserRole(user_id=user.id, role="user")
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row.role or "user"
+
+
+def require_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    role = get_user_role(db, current_user)
+    if role not in {"admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    return current_user
+
+
+def require_super_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    role = get_user_role(db, current_user)
+    if role != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    return current_user
+
+
+def log_admin_action(db: Session, *, actor_user_id: int | None, action: str, target_type: str | None = None, target_id: str | None = None, details_json: str | None = None) -> None:
+    row = AdminAuditLog(
+        actor_user_id=actor_user_id,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        details_json=details_json,
+    )
+    db.add(row)
+    db.commit()

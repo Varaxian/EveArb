@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+import httpx
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import User
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, require_admin
 from app.services.settings_service import (
     get_platform_region_hub_systems,
     get_platform_tracked_regions,
@@ -45,12 +46,12 @@ def get_settings(current_user: User = Depends(get_current_user), db: Session = D
     }
 
 @router.post("/platform")
-def save_platform_settings(payload: PlatformSettingsPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def save_platform_settings(payload: PlatformSettingsPayload, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     tracked = set_platform_tracked_regions(db, payload.tracked_regions)
     return {"status": "saved", "tracked_regions": tracked}
 
 @router.post("/platform/hubs")
-def save_hubs(payload: HubSystemsPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def save_hubs(payload: HubSystemsPayload, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     mapping = set_platform_region_hub_systems(db, payload.region_hub_systems)
     return {"status": "saved", "region_hub_systems": mapping}
 
@@ -58,3 +59,19 @@ def save_hubs(payload: HubSystemsPayload, current_user: User = Depends(get_curre
 def save_filters(payload: DashboardFiltersPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     filters = set_user_dashboard_filters(db, current_user.id, payload.model_dump())
     return {"status": "saved", "dashboard_filters": filters}
+
+
+@router.get("/region-options")
+async def region_options(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    region_ids = get_platform_tracked_regions(db)
+    results = [{"id": rid, "name": f"Region {rid}"} for rid in region_ids]
+    if region_ids:
+        try:
+            async with httpx.AsyncClient(base_url="https://esi.evetech.net", timeout=20.0, headers={"User-Agent": "EVEArb/2.20.07"}) as client:
+                response = await client.post("/v3/universe/names/", params={"datasource": "tranquility"}, json=region_ids)
+                if response.status_code < 400:
+                    names = {int(row["id"]): row.get("name") for row in response.json()}
+                    results = [{"id": rid, "name": names.get(rid) or f"Region {rid}"} for rid in region_ids]
+        except Exception:
+            pass
+    return results

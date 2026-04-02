@@ -1,0 +1,28 @@
+
+<!doctype html><html><head><meta charset="utf-8"><title>Administrator Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+body { font-family: Arial, sans-serif; margin: 20px; background: #111827; color: #e5e7eb; }
+.nav { display:flex; gap:10px; flex-wrap:wrap; margin: 12px 0 20px; }
+.nav a { padding:8px 12px; border-radius:8px; background:#1f2937; text-decoration:none; color:#e5e7eb; }
+.row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+.card { background:#1f2937; border-radius:10px; padding:16px; min-width:280px; flex:1; }
+button, input, textarea, select { padding:8px; margin:4px 0; border-radius:6px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; width:100%; box-sizing:border-box; }
+button{width:auto; cursor:pointer;} .mono{white-space:pre-wrap; font-family: ui-monospace,monospace; font-size:12px;} table{width:100%; border-collapse:collapse; margin-top:12px;} th, td{border-bottom:1px solid #374151; padding:8px; text-align:left; font-size:14px;}
+</style></head><body>
+<h1>Administrator Settings</h1>
+<div class="nav"><a href="/dashboard">Dashboard</a><a href="/active-opportunities">Active Opportunities</a><a href="/administrator-settings">Administrator Settings</a></div>
+<div class="row"><div class="card"><h3>Manual Ingest</h3><button onclick="runIngest()">Run ingest now</button><div id="ingestResult" class="mono"></div></div><div class="card"><h3>Scheduler</h3><button onclick="loadScheduler()">Refresh scheduler status</button><button onclick="runScheduler()">Run scheduler cycle now</button><div id="schedulerResult" class="mono"></div></div><div class="card"><h3>Auth Sessions</h3><button onclick="loadSessions()">Refresh sessions</button><div id="sessionsResult" class="mono"></div></div></div>
+<div class="row"><div class="card"><h3>Tracked Regions</h3><label>Comma-separated region IDs</label><input id="trackedRegions"><button onclick="saveTrackedRegions()">Save tracked regions</button><div id="trackedRegionsResult" class="mono"></div></div><div class="card"><h3>Hub Systems</h3><label>JSON mapping of region → hub system</label><textarea id="hubSystems" rows="6">{}</textarea><button onclick="saveHubSystems()">Save hub systems</button><div id="hubSystemsResult" class="mono"></div></div></div>
+<div class="row"><div class="card"><h3>Admins</h3><button onclick="loadUsers()">Refresh users</button><table id="usersTbl"><thead><tr><th>ID</th><th>Handle</th><th>Role</th><th>Set Role</th></tr></thead><tbody></tbody></table></div><div class="card"><h3>Audit Logs</h3><button onclick="loadAuditLogs()">Refresh audit logs</button><div id="auditLogs" class="mono"></div></div></div>
+<script>
+async function runIngest(){const r=await fetch('/market/ingest',{method:'POST'}); document.getElementById('ingestResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function loadScheduler(){const r=await fetch('/scheduler/status'); document.getElementById('schedulerResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function runScheduler(){const r=await fetch('/scheduler/run',{method:'POST'}); document.getElementById('schedulerResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function loadSessions(){const r=await fetch('/admin/sessions'); document.getElementById('sessionsResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function loadSettings(){const r=await fetch('/settings'); const data=await r.json(); document.getElementById('trackedRegions').value=(data.tracked_regions||[]).join(','); document.getElementById('hubSystems').value=JSON.stringify(data.region_hub_systems||{},null,2);} 
+async function saveTrackedRegions(){const tracked_regions=document.getElementById('trackedRegions').value.split(',').map(x=>Number(x.trim())).filter(Boolean); const r=await fetch('/settings/platform',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tracked_regions})}); document.getElementById('trackedRegionsResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function saveHubSystems(){const region_hub_systems=JSON.parse(document.getElementById('hubSystems').value); const r=await fetch('/settings/platform/hubs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({region_hub_systems})}); document.getElementById('hubSystemsResult').textContent=JSON.stringify(await r.json(),null,2);} 
+async function loadUsers(){const r=await fetch('/admin/users'); const data=await r.json(); const tbody=document.querySelector('#usersTbl tbody'); tbody.innerHTML=''; for(const row of data){const tr=document.createElement('tr'); tr.innerHTML=`<td>${row.id}</td><td>${row.handle||''}</td><td>${row.role}</td><td><select><option value="user">user</option><option value="admin">admin</option><option value="super_admin">super_admin</option></select> <button>Save</button></td>`; tr.querySelector('select').value=row.role; tr.querySelector('button').onclick=()=>setRole(row.id,tr.querySelector('select').value); tbody.appendChild(tr);} }
+async function setRole(id, role){const r=await fetch(`/admin/users/${id}/role/${role}`,{method:'POST'}); alert(JSON.stringify(await r.json())); await loadUsers(); await loadAuditLogs();}
+async function loadAuditLogs(){const r=await fetch('/admin/audit-logs'); document.getElementById('auditLogs').textContent=JSON.stringify(await r.json(),null,2);} 
+(async function(){await loadSettings(); await loadUsers(); await loadAuditLogs();})();
+</script></body></html>
