@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -U pip && \
 # Force correct working directory before launch
 WORKDIR /app/apps/api
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "apps.api.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
