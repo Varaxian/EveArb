@@ -1,3 +1,6 @@
+
+ALLOWED_ROUTE_SECURITY_MODES = {"any","highsec_only","high_low","avoid_null","includes_null"}
+
 from __future__ import annotations
 
 from sqlalchemy import func
