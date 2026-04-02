@@ -1,0 +1,2 @@
+class EVEAuthAPI:
+    pass

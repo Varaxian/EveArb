@@ -1,0 +1,2 @@
+class UniverseAPI:
+    pass

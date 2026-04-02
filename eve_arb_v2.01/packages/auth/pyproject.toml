@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eve-arb-auth"
+version = "2.0.1"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.28", "python-jose[cryptography]>=3.3", "pydantic>=2.7"]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages.auth*"]
