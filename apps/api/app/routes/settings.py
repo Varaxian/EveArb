@@ -67,7 +67,7 @@ async def region_options(current_user: User = Depends(get_current_user), db: Ses
     results = [{"id": rid, "name": f"Region {rid}"} for rid in region_ids]
     if region_ids:
         try:
-            async with httpx.AsyncClient(base_url="https://esi.evetech.net", timeout=20.0, headers={"User-Agent": "EVEArb/2.20.07"}) as client:
+            async with httpx.AsyncClient(base_url="https://esi.evetech.net", timeout=20.0, headers={"User-Agent": "EVEArb/2.20.08"}) as client:
                 response = await client.post("/v3/universe/names/", params={"datasource": "tranquility"}, json=region_ids)
                 if response.status_code < 400:
                     names = {int(row["id"]): row.get("name") for row in response.json()}
