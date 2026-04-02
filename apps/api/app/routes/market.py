@@ -22,6 +22,22 @@ ALLOWED_ROUTE_SECURITY_MODES = {
 router = APIRouter(prefix="/market", tags=["market"])
 
 
+def _normalize_region_filter(value: str | None) -> int | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip().lower()
+    if cleaned in {"", "all"}:
+        return None
+    return int(cleaned)
+
+
+def _selected_region_ids(db: Session, value: str | None) -> list[int]:
+    normalized = _normalize_region_filter(value)
+    if normalized is None:
+        return get_platform_tracked_regions(db)
+    return [normalized]
+
+
 @router.post("/ingest")
 async def ingest_market(region_ids: str | None = Query(default=None), db: Session = Depends(get_db), current_user = Depends(require_admin)):
     target_regions = get_platform_tracked_regions(db)
@@ -73,8 +89,8 @@ def latest_market(region_id: int = Query(...), limit: int = Query(50, ge=1, le=5
 
 @router.get("/opportunities")
 async def opportunities(
-    src_region_id: int = Query(...),
-    dst_region_id: int = Query(...),
+    src_region_id: str | None = Query(default="all"),
+    dst_region_id: str | None = Query(default="all"),
     limit: int = Query(50, ge=1, le=500),
     min_roi: float | None = Query(default=None, ge=0.0),
     min_qty: int | None = Query(default=None, ge=1),
@@ -94,19 +110,31 @@ async def opportunities(
     min_system_security = max(0.0, min(1.0, float(min_system_security or 0.0)))
 
     hub_systems = get_platform_region_hub_systems(db)
-    return await compute_opportunities(
-        db,
-        src_region_id=src_region_id,
-        dst_region_id=dst_region_id,
-        hub_systems=hub_systems,
-        limit=limit,
-        min_roi=min_roi,
-        min_qty=min_qty,
-        min_net_profit_isk=min_net_profit_isk,
-        max_total_m3=max_total_m3,
-        total_m3_available=total_m3_available,
-        max_jumps=max_jumps,
-        route_security_mode=route_security_mode,
-        min_system_security=min_system_security,
-        user_id=(current_user.id if current_user else None),
-    )
+    src_region_ids = _selected_region_ids(db, src_region_id)
+    dst_region_ids = _selected_region_ids(db, dst_region_id)
+
+    combined_rows = []
+    for src_id in src_region_ids:
+        for dst_id in dst_region_ids:
+            if src_id == dst_id:
+                continue
+            rows = await compute_opportunities(
+                db,
+                src_region_id=src_id,
+                dst_region_id=dst_id,
+                hub_systems=hub_systems,
+                limit=limit,
+                min_roi=min_roi,
+                min_qty=min_qty,
+                min_net_profit_isk=min_net_profit_isk,
+                max_total_m3=max_total_m3,
+                total_m3_available=total_m3_available,
+                max_jumps=max_jumps,
+                route_security_mode=route_security_mode,
+                min_system_security=min_system_security,
+                user_id=(current_user.id if current_user else None),
+            )
+            combined_rows.extend(rows)
+
+    combined_rows.sort(key=lambda row: row.get("net_profit_isk", 0.0), reverse=True)
+    return combined_rows[:limit]
