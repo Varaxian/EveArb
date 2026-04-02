@@ -1,0 +1,5 @@
+v2.20.03
+- Moves all admin/config controls under Administrator Settings
+- Hides admin navigation and controls from end users
+- Protects Administrator Settings page with admin-only access
+- Redirects legacy /admin page to /administrator-settings for admins

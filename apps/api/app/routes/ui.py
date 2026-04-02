@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse
+
+from app.db.models import User
+from app.services.auth_service import require_admin
 
 router = APIRouter(tags=["ui"])
 
@@ -19,6 +22,10 @@ def dashboard():
 def active_opportunities():
     return _dashboard_html()
 
-@router.get("/admin", response_class=HTMLResponse)
-def admin_page():
+@router.get("/administrator-settings", response_class=HTMLResponse)
+def administrator_settings(current_user: User = Depends(require_admin)):
     return _dashboard_html()
+
+@router.get("/admin", include_in_schema=False)
+def admin_redirect(current_user: User = Depends(require_admin)):
+    return RedirectResponse(url="/administrator-settings", status_code=307)
