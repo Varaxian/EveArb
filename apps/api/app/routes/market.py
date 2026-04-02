@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -33,9 +34,12 @@ async def ingest_market(region_ids: str | None = Query(default=None), db: Sessio
 
     job = start_job(db, "manual_market_ingest", {"region_ids": target_regions})
     try:
-        result = await ingest_regions(db, target_regions)
+        result = await asyncio.wait_for(ingest_regions(db, target_regions), timeout=120)
         finish_job(db, job.id, "success", result)
         return result
+    except asyncio.TimeoutError:
+        finish_job(db, job.id, "failed", {"error": "manual ingest timed out after 120 seconds"})
+        raise HTTPException(status_code=504, detail="manual ingest timed out after 120 seconds")
     except Exception as exc:
         finish_job(db, job.id, "failed", {"error": repr(exc)})
         raise

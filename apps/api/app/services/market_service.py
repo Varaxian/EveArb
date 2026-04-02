@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import RegionMarketSnapshot
 from app.services.esi_market import aggregate_best_prices, fetch_region_orders
-from app.services.location_name_service import warm_location_cache
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -53,13 +52,10 @@ async def ingest_regions(db: Session, region_ids: list[int]) -> dict:
 
     db.commit()
 
-    # Resolve and store static NPC station names once at ingest time.
-    await warm_location_cache(db, npc_location_ids, settings.esi_user_agent)
 
     return {
         "status": "ok",
         "snapshot_at": snapshot_at.isoformat(),
         "regions": summary,
         "rows_inserted": inserted_rows,
-        "npc_locations_warmed": len(set(npc_location_ids)),
     }
