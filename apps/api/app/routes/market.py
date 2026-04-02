@@ -11,6 +11,8 @@ from app.services.market_service import ingest_regions
 from app.services.opportunity_service import compute_opportunities
 from app.services.settings_service import get_platform_region_hub_systems, get_platform_tracked_regions
 
+ALLOWED_ROUTE_SECURITY_MODES = {"any", "highsec_only", "high_low", "avoid_null", "includes_null"}
+
 router = APIRouter(prefix="/market", tags=["market"])
 
 @router.post("/ingest")
@@ -77,6 +79,12 @@ async def opportunities(
     min_system_security: float = Query(default=0.0),
     db: Session = Depends(get_db),
 ):
+    route_security_mode = (route_security_mode or "any").strip().lower()
+    if route_security_mode not in ALLOWED_ROUTE_SECURITY_MODES:
+        raise HTTPException(status_code=400, detail="Invalid route_security_mode")
+
+    min_system_security = max(0.0, min(1.0, float(min_system_security)))
+
     hub_systems = get_platform_region_hub_systems(db)
     return await compute_opportunities(
         db,

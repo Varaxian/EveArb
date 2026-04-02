@@ -1,6 +1,6 @@
-# EVE Arb v2.04
+# EVE Arb v2.08
 
-This build keeps the working v2.03 base and adds the full next layer:
+This build keeps the working v2.07 base and adds the v2.08 hardening layer:
 - CSV export
 - scheduler endpoints and optional background scheduler
 - route-aware logistics using ESI route jumps

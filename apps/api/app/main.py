@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.07", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.08", lifespan=lifespan)
 
 app.include_router(app_router)
 app.include_router(auth_router)
