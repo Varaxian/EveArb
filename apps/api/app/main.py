@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import settings
-from app.db.database import Base, engine
+from app.db.database import Base, engine, ensure_runtime_schema
 from app.routes.app import router as app_router
 from app.routes.auth import router as auth_router
 from app.routes.export import router as export_router
@@ -19,11 +19,12 @@ from app.services.scheduler_service import start_scheduler, stop_scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_runtime_schema()
     start_scheduler()
     yield
     await stop_scheduler()
 
-app = FastAPI(title=settings.app_name, version="v2.07", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="v2.12", lifespan=lifespan)
 
 app.include_router(app_router)
 app.include_router(auth_router)
@@ -38,7 +39,7 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.07",
+        "service": "eve-arb-v2.12",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
@@ -62,7 +63,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.07"}
+    return {"health": "green", "version": "v2.12"}
 
 @app.get("/config-check")
 def config_check():
@@ -75,4 +76,5 @@ def config_check():
         "tracked_regions_default": settings.tracked_region_ids(),
         "scheduler_enabled": settings.enable_scheduler,
         "scheduler_interval_seconds": settings.scheduler_interval_seconds,
+        "broker_fee_rate": settings.broker_fee_rate,
     }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import settings
@@ -24,6 +24,19 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 Base = declarative_base()
+
+def ensure_runtime_schema() -> None:
+    inspector = inspect(engine)
+
+    existing_tables = set(inspector.get_table_names())
+
+    if "region_market_snapshots" in existing_tables:
+        columns = {col["name"] for col in inspector.get_columns("region_market_snapshots")}
+        with engine.begin() as conn:
+            if "best_sell_location_id" not in columns:
+                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_sell_location_id INTEGER"))
+            if "best_buy_location_id" not in columns:
+                conn.execute(text("ALTER TABLE region_market_snapshots ADD COLUMN best_buy_location_id INTEGER"))
 
 def get_db():
     db = SessionLocal()

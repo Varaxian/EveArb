@@ -1,0 +1,12 @@
+DELETE
+- None if you are replacing files in-place.
+- If you are using a full rebuild workflow, delete everything in the repo folder except `.git` before copying in this zip.
+
+REPLACE
+- Full repo contents from this zip
+
+ADD
+- apps/api/app/services/location_name_service.py
+
+COMMIT MESSAGE
+v2.12 persist location ids and add cached station structure resolution to reduce ESI and hosting cost

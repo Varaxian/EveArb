@@ -106,6 +106,16 @@ class TypeMetadata(Base):
     volume_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+class LocationNameCache(Base):
+    __tablename__ = "location_name_cache"
+
+    location_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    location_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location_kind: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
 class RegionMarketSnapshot(Base):
     __tablename__ = "region_market_snapshots"
     __table_args__ = (
@@ -120,6 +130,8 @@ class RegionMarketSnapshot(Base):
     best_buy: Mapped[float | None] = mapped_column(Float, nullable=True)
     sell_volume: Mapped[int] = mapped_column(Integer, default=0)
     buy_volume: Mapped[int] = mapped_column(Integer, default=0)
+    best_sell_location_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    best_buy_location_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 class JobRun(Base):
     __tablename__ = "job_runs"

@@ -1,0 +1,12 @@
+DELETE
+- None if you are replacing files in-place.
+- If you are using a full rebuild workflow, delete everything in the repo folder except `.git` before copying in this zip.
+
+REPLACE
+- Full repo contents from this zip
+
+ADD
+- None beyond the files already included in the full repo zip
+
+COMMIT MESSAGE
+v2.10 fix fits cargo truth logic and carry forward cargo realism baseline

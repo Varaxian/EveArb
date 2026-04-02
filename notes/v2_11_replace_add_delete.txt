@@ -1,0 +1,12 @@
+DELETE
+- None if you are replacing files in-place.
+- If you are using a full rebuild workflow, delete everything in the repo folder except `.git` before copying in this zip.
+
+REPLACE
+- Full repo contents from this zip
+
+ADD
+- apps/api/app/services/location_name_service.py
+
+COMMIT MESSAGE
+v2.11 add buy and sell location names with strict filtering of unresolved structures

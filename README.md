@@ -1,38 +1,30 @@
-# EVE Arb v2.04
+# EveArb v2.12
 
-This build keeps the working v2.03 base and adds the full next layer:
-- CSV export
-- scheduler endpoints and optional background scheduler
-- route-aware logistics using ESI route jumps
-- minimal browser dashboard
+This build advances the live v2.11 baseline with lower-cost location handling.
 
-## Separation of concerns
-- `routes/` contains HTTP surface only
-- `services/` contains ESI access, ingest, opportunities, export, scheduler, and settings logic
-- `db/` contains database setup and models
-- `ui/` contains the basic dashboard HTML
+## Added in v2.12
+- best buy and best sell location IDs are persisted into market snapshots
+- new local `location_name_cache` table for station/structure name caching
+- NPC station names are warmed and stored during ingest
+- Upwell structure names are resolved lazily only for surviving opportunity candidates
+- unresolved structures are still omitted from results
+- request-time live orderbook lookups were removed from opportunities to reduce ESI usage and hosting cost
+- runtime schema upgrade helper adds new snapshot location columns automatically on startup
 
-## Railway variables
-- DATABASE_URL
-- ESI_CLIENT_ID
-- ESI_CLIENT_SECRET
-- ESI_CALLBACK_URL
-- PUBLIC_BASE_URL
-- TRACKED_REGIONS
-- DEFAULT_REGION_HUB_SYSTEMS
-- ESI_USER_AGENT
-- ENABLE_SCHEDULER
-- SCHEDULER_INTERVAL_SECONDS
+## Existing behavior retained
+- Buy Location and Sell Location columns on the dashboard
+- cargo realism and fits-cargo truth logic
+- profit realism with broker fee, sales tax, and hauling assumptions
+- route-security-aware opportunity filtering
+
+## Operational note
+After deploying v2.12, run a fresh market ingest so the newest snapshots include persisted location IDs. Older snapshots created before v2.12 may not have those IDs and can produce fewer results until new data is ingested.
 
 ## Key routes
 - `/dashboard`
 - `POST /market/ingest`
 - `GET /market/opportunities`
 - `GET /export/opportunities.csv`
+- `GET /logistics/route`
 - `GET /scheduler/status`
 - `POST /scheduler/run`
-
-## Notes
-- Scheduler is off by default. Turn it on with `ENABLE_SCHEDULER=true`.
-- Route-aware logistics uses region hub systems for jump counts.
-- Volume is cached per item type in the database.

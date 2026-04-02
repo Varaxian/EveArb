@@ -62,24 +62,35 @@ def get_numeric_pref(db: Session, user_id: int, key: str, default: float) -> flo
             return default
     return default
 
+def get_text_pref(db: Session, user_id: int, key: str, default: str) -> str:
+    row = _get_user_pref(db, user_id, key)
+    if row and row.value not in (None, ""):
+        return str(row.value)
+    return default
+
 def get_user_dashboard_filters(db: Session, user_id: int) -> dict:
+    total_m3_available = get_numeric_pref(db, user_id, "filter_total_m3_available", 0.0)
     return {
         "min_roi": get_numeric_pref(db, user_id, "filter_min_roi", settings.min_roi),
         "min_qty": int(get_numeric_pref(db, user_id, "filter_min_qty", settings.min_qty)),
         "min_net_profit_isk": get_numeric_pref(db, user_id, "filter_min_net_profit_isk", 0.0),
-        "max_total_m3": get_numeric_pref(db, user_id, "filter_max_total_m3", 0.0),
+        "max_total_m3": get_numeric_pref(db, user_id, "filter_max_total_m3", total_m3_available),
+        "total_m3_available": total_m3_available,
         "max_jumps": int(get_numeric_pref(db, user_id, "filter_max_jumps", 0.0)),
         "limit": int(get_numeric_pref(db, user_id, "filter_limit", 50.0)),
-        "route_security_mode": (_get_user_pref(db, user_id, "filter_route_security_mode").value if _get_user_pref(db, user_id, "filter_route_security_mode") else "any"),
+        "route_security_mode": get_text_pref(db, user_id, "filter_route_security_mode", "any"),
         "min_system_security": get_numeric_pref(db, user_id, "filter_min_system_security", 0.0),
     }
 
 def set_user_dashboard_filters(db: Session, user_id: int, payload: dict) -> dict:
+    total_m3_available = float(payload.get("total_m3_available", 0.0))
+    max_total_m3 = float(payload.get("max_total_m3", total_m3_available))
     filters = {
         "min_roi": float(payload.get("min_roi", settings.min_roi)),
         "min_qty": int(payload.get("min_qty", settings.min_qty)),
         "min_net_profit_isk": float(payload.get("min_net_profit_isk", 0.0)),
-        "max_total_m3": float(payload.get("max_total_m3", 0.0)),
+        "max_total_m3": max_total_m3,
+        "total_m3_available": total_m3_available,
         "max_jumps": int(payload.get("max_jumps", 0)),
         "limit": int(payload.get("limit", 50)),
         "route_security_mode": str(payload.get("route_security_mode", "any")),
