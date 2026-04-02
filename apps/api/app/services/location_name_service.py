@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 import httpx
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.models import LocationNameCache
@@ -34,23 +35,28 @@ def _is_fresh(row: LocationNameCache | None) -> bool:
     return age <= timedelta(hours=UNRESOLVED_RETRY_HOURS)
 
 def _upsert_cache_row(db: Session, location_id: int, name: str | None, kind: str | None, is_resolved: bool) -> None:
-    row = db.query(LocationNameCache).filter(LocationNameCache.location_id == location_id).first()
-    now = utcnow()
-    if row is None:
-        row = LocationNameCache(
-            location_id=location_id,
-            location_name=name,
-            location_kind=kind,
-            is_resolved=is_resolved,
-            first_seen_at=now,
-            last_checked_at=now,
-        )
-        db.add(row)
-    else:
-        row.location_name = name
-        row.location_kind = kind
-        row.is_resolved = is_resolved
-        row.last_checked_at = now
+    db.execute(
+        text(
+            """
+            INSERT INTO location_name_cache (
+                location_id, location_name, location_kind, is_resolved, first_seen_at, last_checked_at
+            ) VALUES (
+                :location_id, :location_name, :location_kind, :is_resolved, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (location_id) DO UPDATE SET
+                location_name = EXCLUDED.location_name,
+                location_kind = EXCLUDED.location_kind,
+                is_resolved = EXCLUDED.is_resolved,
+                last_checked_at = EXCLUDED.last_checked_at
+            """
+        ),
+        {
+            "location_id": location_id,
+            "location_name": name,
+            "location_kind": kind,
+            "is_resolved": is_resolved,
+        },
+    )
 
 async def warm_location_cache(db: Session, location_ids: Iterable[int], user_agent: str) -> None:
     ids = sorted({int(x) for x in location_ids if x})
@@ -66,7 +72,7 @@ async def warm_location_cache(db: Session, location_ids: Iterable[int], user_age
         return
 
     headers = {"User-Agent": user_agent}
-    async with httpx.AsyncClient(base_url=ESI_BASE_URL, timeout=30.0, headers=headers) as client:
+    async with httpx.AsyncClient(base_url=ESI_BASE_URL, timeout=10.0, headers=headers) as client:
         try:
             response = await client.post("/v3/universe/names/", params={"datasource": "tranquility"}, json=missing)
             if response.status_code < 400:
@@ -115,7 +121,7 @@ async def resolve_location_names(db: Session, location_ids: Iterable[int], user_
             unresolved_station_ids.append(loc_id)
 
     headers = {"User-Agent": user_agent}
-    async with httpx.AsyncClient(base_url=ESI_BASE_URL, timeout=30.0, headers=headers) as client:
+    async with httpx.AsyncClient(base_url=ESI_BASE_URL, timeout=10.0, headers=headers) as client:
         if unresolved_station_ids:
             try:
                 response = await client.post("/v3/universe/names/", params={"datasource": "tranquility"}, json=unresolved_station_ids)

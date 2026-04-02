@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import AdminAuditLog, User, UserRole, UserSession
 from app.services.auth_service import get_user_role, log_admin_action, require_admin, require_super_admin
-from app.services.job_service import parse_details_json
+from app.utils.json_utils import safe_json_loads
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -21,7 +22,7 @@ def audit_logs(current_user: User = Depends(require_admin), db: Session = Depend
             "action": row.action,
             "target_type": row.target_type,
             "target_id": row.target_id,
-            "details": parse_details_json(row.details_json),
+            "details": safe_json_loads(row.details_json),
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }
         for row in rows
@@ -58,7 +59,7 @@ def set_user_role(user_id: int, role: str, current_user: User = Depends(require_
     else:
         row.role = role
     db.commit()
-    log_admin_action(db, actor_user_id=current_user.id, action="set_role", target_type="user", target_id=str(user.id), details_json=f'{{"role": "{role}"}}')
+    log_admin_action(db, actor_user_id=current_user.id, action="set_role", target_type="user", target_id=str(user.id), details_json=json.dumps({"role": role}))
     return {"status": "saved", "user_id": user.id, "role": role}
 
 

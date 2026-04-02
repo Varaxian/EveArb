@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "EVE Arb"
-    app_version: str = "v2.20.09"
+    app_version: str = "v2.20.10"
     app_env: str = "production"
     public_base_url: str = "https://evearb-production.up.railway.app"
 
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     esi_client_secret: str = ""
     esi_callback_url: str = "https://evearb-production.up.railway.app/auth/callback"
     esi_scopes: str = "publicData"
-    esi_user_agent: str = "EVEArb/2.20.09 (contact@example.com)"
+    esi_user_agent: str = "EVEArb/2.20.10 (contact@example.com)"
 
     tracked_regions: str = "10000002,10000043"
     default_region_hub_systems: str = '{"10000002":30000142,"10000043":30002187,"10000032":30002659,"10000030":30002510,"10000042":30000144}'
@@ -32,9 +32,6 @@ class Settings(BaseSettings):
 
     enable_scheduler: bool = False
     scheduler_interval_seconds: int = 900
-
-    manual_ingest_timeout_seconds: int = 120
-    ingest_stale_seconds: int = 1800
 
     def tracked_region_ids(self) -> list[int]:
         return [int(x.strip()) for x in self.tracked_regions.split(",") if x.strip()]
