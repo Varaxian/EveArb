@@ -38,7 +38,7 @@ app.include_router(ui_router)
 def root():
     return {
         "status": "ok",
-        "service": "eve-arb-v2.07",
+        "service": "eve-arb-v2.08",
         "dashboard": "/dashboard",
         "routes": [
             "/health",
@@ -62,7 +62,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"health": "green", "version": "v2.07"}
+    return {"health": "green", "version": "v2.08"}
 
 @app.get("/config-check")
 def config_check():
