@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.database import get_db
-from app.db.models import AdminAuditLog, EveAuthToken, EveCharacter, User, UserRole, UserSession
+from app.db.models import EveAuthToken, EveCharacter, User, UserSession
 
 AUTH_BASE = "https://login.eveonline.com/v2/oauth/authorize"
 TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
@@ -231,63 +231,3 @@ def latest_characters_for_user(db: Session, user_id: int) -> list[EveCharacter]:
         .order_by(EveCharacter.updated_at.desc())
         .all()
     )
-
-
-
-def get_user_role(db: Session, user_id: int) -> str:
-    role_row = db.query(UserRole).filter(UserRole.user_id == user_id).first()
-    if role_row is None:
-        role = 'super_admin' if (db.query(User).filter(User.id == user_id).first() or User()).handle == 'Varaxian' else 'user'
-        role_row = UserRole(user_id=user_id, role=role)
-        db.add(role_row)
-        db.commit()
-        db.refresh(role_row)
-    if role_row.role != 'super_admin':
-        user = db.query(User).filter(User.id == user_id).first()
-        if user and user.handle == 'Varaxian':
-            role_row.role = 'super_admin'
-            db.commit()
-            db.refresh(role_row)
-    return role_row.role
-
-
-def is_admin_user(db: Session, user_id: int) -> bool:
-    return get_user_role(db, user_id) in {'admin', 'super_admin'}
-
-
-def require_admin(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> User:
-    if not is_admin_user(db, current_user.id):
-        raise HTTPException(status_code=403, detail='Administrator access required')
-    return current_user
-
-
-def require_super_admin(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> User:
-    if get_user_role(db, current_user.id) != 'super_admin':
-        raise HTTPException(status_code=403, detail='Super administrator access required')
-    return current_user
-
-
-def write_admin_audit_log(
-    db: Session,
-    *,
-    actor_user_id: int | None,
-    action: str,
-    target_type: str | None = None,
-    target_id: str | None = None,
-    details_json: str | None = None,
-) -> None:
-    row = AdminAuditLog(
-        actor_user_id=actor_user_id,
-        action=action,
-        target_type=target_type,
-        target_id=target_id,
-        details_json=details_json,
-    )
-    db.add(row)
-    db.commit()

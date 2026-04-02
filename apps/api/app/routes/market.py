@@ -11,7 +11,7 @@ from app.services.job_service import finish_job, start_job
 from app.services.market_service import ingest_regions
 from app.services.opportunity_service import compute_opportunities
 from app.services.settings_service import get_platform_region_hub_systems, get_platform_tracked_regions
-from app.services.auth_service import get_current_user_optional, require_admin, write_admin_audit_log
+from app.services.auth_service import get_current_user_optional
 
 ALLOWED_ROUTE_SECURITY_MODES = {
     "any",
@@ -25,14 +25,13 @@ router = APIRouter(prefix="/market", tags=["market"])
 
 
 @router.post("/ingest")
-async def ingest_market(region_ids: str | None = Query(default=None), current_user = Depends(require_admin), db: Session = Depends(get_db)):
+async def ingest_market(region_ids: str | None = Query(default=None), db: Session = Depends(get_db)):
     target_regions = get_platform_tracked_regions(db)
     if region_ids:
         target_regions = [int(x.strip()) for x in region_ids.split(",") if x.strip()]
     if not target_regions:
         raise HTTPException(status_code=400, detail="No tracked regions configured")
 
-    write_admin_audit_log(db, actor_user_id=current_user.id, action="manual_market_ingest", target_type="market", details_json=str({"region_ids": target_regions}))
     job = start_job(db, "manual_market_ingest", {"region_ids": target_regions})
     try:
         result = await asyncio.wait_for(ingest_regions(db, target_regions), timeout=120)
